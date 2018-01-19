@@ -1,0 +1,18 @@
+dist: trusty
+
+os:
+- linux
+
+language: go
+
+go:
+- 1.9
+- tip
+
+install:
+- go get github.com/mattn/goveralls
+- go get github.com/golang/dep/cmd/dep
+- dep ensure
+
+script:
+- goveralls -service=travis-ci
