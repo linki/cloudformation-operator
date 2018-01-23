@@ -4,7 +4,7 @@ metadata:
   name: my-bucket
 spec:
   parameters:
-    VersioningConfiguration: Suspended
+    VersioningConfiguration: Enabled
   template: |
     ---
     AWSTemplateFormatVersion: '2010-09-09'
@@ -17,12 +17,6 @@ spec:
       S3Bucket:
         Type: AWS::S3::Bucket
         Properties:
-          AccessControl: Private
           VersioningConfiguration:
             Status:
               Ref: VersioningConfiguration
-
-    Outputs:
-      BucketName:
-        Value: !Ref 'S3Bucket'
-        Description: Name of the sample Amazon S3 bucket with a lifecycle configuration.
