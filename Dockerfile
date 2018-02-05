@@ -14,6 +14,8 @@ RUN go build -o /bin/cloudformation-operator -v \
 FROM alpine:3.7
 MAINTAINER Linki <linki+docker.com@posteo.de>
 
+RUN apk --no-cache add ca-certificates
+
 RUN addgroup -S app && adduser -S -g app app
 COPY --from=builder /bin/cloudformation-operator /bin/cloudformation-operator
 
