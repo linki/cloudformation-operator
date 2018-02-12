@@ -6,17 +6,50 @@ A Kubernetes operator for managing CloudFormation stacks via `kubectl` and a cus
 
 # Setup
 
-You need full API access to a cluster running at least Kubernetes v1.7.
+You need API access to a cluster running at least Kubernetes v1.7.
 
-For simplicity, start the CloudFormation operator locally. This would run as a Pod in your cluster later.
+Start the CloudFormation operator in your cluster by using the following manifest:
 
-```console
-$ go run main.go --interval=10s --region=eu-central-1
+```yaml
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: cloudformation-operator
+spec:
+  template:
+    metadata:
+      labels:
+        app: cloudformation-operator
+    spec:
+      containers:
+      - name: cloudformation-operator
+        image: quay.io/linki/cloudformation-operator:v0.1.1
+        args:
+        - --region=eu-central-1
+        - --interval=1m
+        - --debug
 ```
 
-Modify the region flag to match yours and make sure you have permission to create and delete CloudFormation stacks.
+Modify the `region` flag to match your cluster's. Additionally you need to make sure that the operator Pod has enough AWS IAM permissions to create, update and delete CloudFormation stacks as well as permission to modify any resources that are part of the CloudFormation stacks you intend to deploy. In order to follow the example below it needs access to CloudFormation as well as S3.
 
-The operator should print some output but shouldn't actually do anything at this point. Leave in running and continue the following steps in a separate terminal window.
+Use the following Policy document as a guideline in order to follow the tutorial:
+
+```yaml
+MyIAMRole:
+  Properties:
+    ...
+    Policies:
+    - PolicyDocument:
+        Statement:
+        - {Action: 'cloudformation:*', Effect: Allow, Resource: '*'}
+        - {Action: 's3:*', Effect: Allow, Resource: '*'}
+        Version: '2012-10-17'
+    ...
+```
+
+The operator will usually use the IAM role of the EC2 instance it's running on, so you have to add those permissions to that role. If you're using [Kube2IAM](https://github.com/jtblin/kube2iam) or similar and give your Pod a dedicated IAM role then you have to add the permissions to that role.
+
+Once running the operator should print some output but shouldn't actually do anything at this point. Leave it running, keep watching its logs and continue with the steps below.
 
 # Demo
 
