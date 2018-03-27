@@ -30,7 +30,11 @@ spec:
         - --debug
 ```
 
-Modify the `region` flag to match your cluster's. Additionally you need to make sure that the operator Pod has enough AWS IAM permissions to create, update and delete CloudFormation stacks as well as permission to modify any resources that are part of the CloudFormation stacks you intend to deploy. In order to follow the example below it needs access to CloudFormation as well as S3.
+Modify the `region` flag to match your cluster's. 
+
+If your Kubernetes cluster uses RBAC, you will need to also need to apply the [manifests/rbac.yaml](manifests/rbac.yaml) manifest to allow cloudformation-operator to manage stack resources.
+
+Additionally you need to make sure that the operator Pod has enough AWS IAM permissions to create, update and delete CloudFormation stacks as well as permission to modify any resources that are part of the CloudFormation stacks you intend to deploy. In order to follow the example below it needs access to CloudFormation as well as S3.
 
 Use the following Policy document as a guideline in order to follow the tutorial:
 
