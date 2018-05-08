@@ -1,7 +1,7 @@
 package fake
 
 import (
-	v1alpha1 "github.com/linki/cloudformation-operator/pkg/client/clientset/versioned/typed/cloudformation/v1alpha1"
+	v1alpha1 "github.com/enekofb/cloudformation-operator/pkg/client/clientset/versioned/typed/cloudformation/v1alpha1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )

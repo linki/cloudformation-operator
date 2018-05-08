@@ -262,3 +262,70 @@ stack "my-bucket" deleted
 Check your CloudFormation console once more and validate that your stack as well as your S3 bucket were deleted.
 
 ![Delete stack](docs/img/stack-delete.png)
+
+# Enabled to Operator-SDK
+
+Enabled to use the [operator sdk](https://github.com/operator-framework/operator-sdk)
+
+## Build docker image 
+
+```
+$ operator-sdk build enekofb/cloudformation-operator
+$ docker push enekofb/cloudformation-operator
+```
+
+## Deploying the operator 
+
+```
+$ kubectl create -f deploy/rbac.yaml
+$ kubectl create -f deploy/crd.yaml
+$ kubectl create -f deploy/operator.yaml 
+```
+
+## Running the operator against local kube
+
+```
+$ operator-sdk up local
+```
+
+## Crate a resource
+
+`kubectl create -f deploy/cr.yaml`
+
+and see the logs
+
+```
+➜  cloudformation-operator git:(refactor-opeartor-sdk) operator-sdk up local
+INFO[0000] Go Version: go1.10.1
+INFO[0000] Go OS/Arch: darwin/amd64
+INFO[0000] operator-sdk Version: 0.0.5+git
+INFO[0000] Targeting cluster at https://192.168.99.100:8443
+INFO[0000] starting stacks controller
+current stacks:
+desired stacks:
+  default/stack-example
+matching stacks:
+superfluous stacks:
+missing stacks:
+  default/stack-example
+creating stack: stack-example
+Stack status: CREATE_IN_PROGRESS
+Stack status: CREATE_IN_PROGRESS
+...
+Stack status: CREATE_IN_PROGRESS
+Stack status: CREATE_COMPLETE
+current stacks:
+  stack-example (arn:aws:cloudformation:us-west-2:799964998218:stack/stack-example/e42e3e40-5313-11e8-b601-50a68a201256)
+desired stacks:
+  default/stack-example
+matching stacks:
+  default/stack-example
+superfluous stacks:
+missing stacks:
+updating stack: stack-example
+Stack update not needed.
+current stacks:
+  stack-example (arn:aws:cloudformation:us-west-2:799964998218:stack/stack-example/e42e3e40-5313-11e8-b601-50a68a201256)
+desired stacks:
+```
+

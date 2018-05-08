@@ -1,9 +1,9 @@
 package fake
 
 import (
-	clientset "github.com/linki/cloudformation-operator/pkg/client/clientset/versioned"
-	cloudformationv1alpha1 "github.com/linki/cloudformation-operator/pkg/client/clientset/versioned/typed/cloudformation/v1alpha1"
-	fakecloudformationv1alpha1 "github.com/linki/cloudformation-operator/pkg/client/clientset/versioned/typed/cloudformation/v1alpha1/fake"
+	clientset "github.com/enekofb/cloudformation-operator/pkg/client/clientset/versioned"
+	cloudformationv1alpha1 "github.com/enekofb/cloudformation-operator/pkg/client/clientset/versioned/typed/cloudformation/v1alpha1"
+	fakecloudformationv1alpha1 "github.com/enekofb/cloudformation-operator/pkg/client/clientset/versioned/typed/cloudformation/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
