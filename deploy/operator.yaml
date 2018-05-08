@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudformation-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: cloudformation-operator
+  template:
+    metadata:
+      labels:
+        name: cloudformation-operator
+    spec:
+      containers:
+        - name: cloudformation-operator
+          image: enekofb/cloudformation-operator
+          command:
+          - cloudformation-operator
+          args:
+          - --region=us-west-2
+          - --debug
+          imagePullPolicy: Always
+          volumeMounts:
+          - mountPath: /home/cloudformation-operator/.aws
+            name: aws
+      volumes:
+      - hostPath:
+          path: /Users/efernandezbrei/.aws
+        name: aws
+

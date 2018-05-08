@@ -12,3 +12,7 @@
 
 # Ignore vendored Go libraries
 vendor/
+
+tmp/_output/
+
+.idea/

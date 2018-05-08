@@ -5,10 +5,10 @@ package v1alpha1
 import (
 	time "time"
 
-	cloudformation_v1alpha1 "github.com/linki/cloudformation-operator/pkg/apis/cloudformation/v1alpha1"
-	versioned "github.com/linki/cloudformation-operator/pkg/client/clientset/versioned"
-	internalinterfaces "github.com/linki/cloudformation-operator/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/linki/cloudformation-operator/pkg/client/listers/cloudformation/v1alpha1"
+	cloudformation_v1alpha1 "github.com/enekofb/cloudformation-operator/pkg/apis/cloudformation/v1alpha1"
+	versioned "github.com/enekofb/cloudformation-operator/pkg/client/clientset/versioned"
+	internalinterfaces "github.com/enekofb/cloudformation-operator/pkg/client/informers/externalversions/internalinterfaces"
+	v1alpha1 "github.com/enekofb/cloudformation-operator/pkg/client/listers/cloudformation/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"

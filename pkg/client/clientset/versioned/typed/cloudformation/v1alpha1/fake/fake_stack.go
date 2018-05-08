@@ -1,7 +1,7 @@
 package fake
 
 import (
-	v1alpha1 "github.com/linki/cloudformation-operator/pkg/apis/cloudformation/v1alpha1"
+	v1alpha1 "github.com/enekofb/cloudformation-operator/pkg/apis/cloudformation/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -16,9 +16,9 @@ type FakeStacks struct {
 	ns   string
 }
 
-var stacksResource = schema.GroupVersionResource{Group: "cloudformation.linki.space", Version: "v1alpha1", Resource: "stacks"}
+var stacksResource = schema.GroupVersionResource{Group: "cloudformation.enekofb.space", Version: "v1alpha1", Resource: "stacks"}
 
-var stacksKind = schema.GroupVersionKind{Group: "cloudformation.linki.space", Version: "v1alpha1", Kind: "Stack"}
+var stacksKind = schema.GroupVersionKind{Group: "cloudformation.enekofb.space", Version: "v1alpha1", Kind: "Stack"}
 
 // Get takes name of the stack, and returns the corresponding stack object, and an error if there is any.
 func (c *FakeStacks) Get(name string, options v1.GetOptions) (result *v1alpha1.Stack, err error) {

@@ -1,8 +1,8 @@
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/linki/cloudformation-operator/pkg/apis/cloudformation/v1alpha1"
-	"github.com/linki/cloudformation-operator/pkg/client/clientset/versioned/scheme"
+	v1alpha1 "github.com/enekofb/cloudformation-operator/pkg/apis/cloudformation/v1alpha1"
+	"github.com/enekofb/cloudformation-operator/pkg/client/clientset/versioned/scheme"
 	serializer "k8s.io/apimachinery/pkg/runtime/serializer"
 	rest "k8s.io/client-go/rest"
 )
@@ -12,7 +12,7 @@ type CloudformationV1alpha1Interface interface {
 	StacksGetter
 }
 
-// CloudformationV1alpha1Client is used to interact with features provided by the cloudformation.linki.space group.
+// CloudformationV1alpha1Client is used to interact with features provided by the cloudformation.enekofb.space group.
 type CloudformationV1alpha1Client struct {
 	restClient rest.Interface
 }

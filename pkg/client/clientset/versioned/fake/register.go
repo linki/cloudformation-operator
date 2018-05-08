@@ -1,7 +1,7 @@
 package fake
 
 import (
-	cloudformationv1alpha1 "github.com/linki/cloudformation-operator/pkg/apis/cloudformation/v1alpha1"
+	cloudformationv1alpha1 "github.com/enekofb/cloudformation-operator/pkg/apis/cloudformation/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

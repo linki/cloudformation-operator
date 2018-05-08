@@ -2,7 +2,7 @@ package versioned
 
 import (
 	glog "github.com/golang/glog"
-	cloudformationv1alpha1 "github.com/linki/cloudformation-operator/pkg/client/clientset/versioned/typed/cloudformation/v1alpha1"
+	cloudformationv1alpha1 "github.com/enekofb/cloudformation-operator/pkg/client/clientset/versioned/typed/cloudformation/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"

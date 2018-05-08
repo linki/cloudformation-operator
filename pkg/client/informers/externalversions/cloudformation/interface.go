@@ -3,8 +3,8 @@
 package cloudformation
 
 import (
-	v1alpha1 "github.com/linki/cloudformation-operator/pkg/client/informers/externalversions/cloudformation/v1alpha1"
-	internalinterfaces "github.com/linki/cloudformation-operator/pkg/client/informers/externalversions/internalinterfaces"
+	v1alpha1 "github.com/enekofb/cloudformation-operator/pkg/client/informers/externalversions/cloudformation/v1alpha1"
+	internalinterfaces "github.com/enekofb/cloudformation-operator/pkg/client/informers/externalversions/internalinterfaces"
 )
 
 // Interface provides access to each of this group's versions.
