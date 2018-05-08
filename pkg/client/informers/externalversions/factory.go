@@ -7,9 +7,9 @@ import (
 	sync "sync"
 	time "time"
 
-	versioned "github.com/linki/cloudformation-operator/pkg/client/clientset/versioned"
-	cloudformation "github.com/linki/cloudformation-operator/pkg/client/informers/externalversions/cloudformation"
-	internalinterfaces "github.com/linki/cloudformation-operator/pkg/client/informers/externalversions/internalinterfaces"
+	versioned "github.com/enekofb/cloudformation-operator/pkg/client/clientset/versioned"
+	cloudformation "github.com/enekofb/cloudformation-operator/pkg/client/informers/externalversions/cloudformation"
+	internalinterfaces "github.com/enekofb/cloudformation-operator/pkg/client/informers/externalversions/internalinterfaces"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
