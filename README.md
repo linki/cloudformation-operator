@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/enekofb/cloudformation-operator.svg?branch=master)](https://travis-ci.com/enekofb/cloudformation-operator)
+
 # cloudformation-operator
 
 A Kubernetes operator for managing CloudFormation stacks via `kubectl` and a custom resource definition.
