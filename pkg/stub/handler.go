@@ -1,27 +1,22 @@
 package stub
 
 import (
-	"github.com/enekofb/cloudformation-operator/pkg/apis/cloudformation/v1alpha1"
+	"errors"
+	"reflect"
+	"strings"
+	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/cloudformation"
-	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
+	"github.com/sirupsen/logrus"
 
-	clientset "github.com/enekofb/cloudformation-operator/pkg/client/clientset/versioned"
-
+	"github.com/operator-framework/operator-sdk/pkg/sdk/action"
 	"github.com/operator-framework/operator-sdk/pkg/sdk/handler"
 	"github.com/operator-framework/operator-sdk/pkg/sdk/types"
 
-	log "github.com/sirupsen/logrus"
-	"k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"os"
-	"k8s.io/client-go/tools/clientcmd"
-	"fmt"
-	"time"
-	"strings"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/cloudformation"
+	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
+
+	"github.com/linki/cloudformation-operator/pkg/apis/cloudformation/v1alpha1"
 )
 
 const (
@@ -29,234 +24,61 @@ const (
 	ownerTagValue = "cloudformation.linki.space/operator"
 )
 
+var (
+	ErrStackNotFound = errors.New("stack not found")
+)
 
 type Handler struct {
-	cf cloudformationiface.CloudFormationAPI
-	kube *clientset.Clientset
-	params *Params
+	client cloudformationiface.CloudFormationAPI
+	dryRun bool
 }
 
-type Params struct {
-	master     string
-	kubeconfig string
-	region     string
-	dryRun     bool
-	debug      bool
-	version    string
+func NewHandler(client cloudformationiface.CloudFormationAPI, dryRun bool) handler.Handler {
+	return &Handler{client: client, dryRun: dryRun}
 }
-
-func NewHandler(params *Params) handler.Handler {
-	handler := &Handler{}
-
-	handler.params = params
-
-	handler.cf = cloudformation.New(session.New(), &aws.Config{
-		Region: aws.String(handler.params.region),
-	})
-
-
-	client,error := newKubeClient(handler.params.kubeconfig, handler.params.master)
-
-	if(error != nil ){
-		log.Fatal(error)
-	}
-
-	handler.kube = client
-	return handler
-}
-
-func NewParams(region string, kubeconfig string,
-	dryRun bool, master string) *Params {
-
-	params := &Params{}
-	params.region = region
-	params.kubeconfig = kubeconfig
-	params.dryRun = dryRun
-	params.master = master
-
-	return params
-}
-
-
-
-func newKubeClient(kubeconfig string, master string) (*clientset.Clientset, error) {
-	if kubeconfig == "" {
-		if _, err := os.Stat(clientcmd.RecommendedHomeFile); err == nil {
-			kubeconfig = clientcmd.RecommendedHomeFile
-		}
-	}
-
-	config, err := clientcmd.BuildConfigFromFlags(master, kubeconfig)
-	if err != nil {
-		return nil, err
-	}
-
-	log.Infof("Targeting cluster at %s", config.Host)
-
-	client, err := clientset.NewForConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	return client, nil
-}
-
 
 func (h *Handler) Handle(ctx types.Context, event types.Event) error {
 	switch o := event.Object.(type) {
 	case *v1alpha1.Stack:
+		stack := o
 
-		err:= h.handlStackEvent(o)
-
-		if err != nil && !errors.IsAlreadyExists(err) {
-			log.Errorf("Failed to  process event: %v", err)
+		// Check if we have ownership over the stack. If the stack exists it must have the correct tag
+		// set. If the stack doesn't exist we take the ownership.
+		ownedByUs, err := h.hasOwnership(stack)
+		if err != nil {
 			return err
 		}
 
-	}
-	return nil
-}
+		if !ownedByUs {
+			logrus.WithField("stack", stack.Name).Info("stack not owned by us, ignoring")
+			return nil
+		}
 
+		if event.Deleted {
+			return h.deleteStack(stack)
+		}
 
-func (h *Handler) handlStackEvent(stack *v1alpha1.Stack ) error{
-	svc:= h.cf
-	client:=h.kube
-	dryRun:=h.params.dryRun
-	fmt.Println("current stacks:")
-	currentStacks := getCurrentStacks(svc)
-	for _, stack := range currentStacks {
-		fmt.Printf("  %s (%s)\n", aws.StringValue(stack.StackName), aws.StringValue(stack.StackId))
-	}
+		exists, err := h.stackExists(stack)
+		if err != nil {
+			return err
+		}
 
-	fmt.Println("desired stacks:")
-	desiredStacks := getDesiredStacks(client)
-	for _, stack := range desiredStacks.Items {
-		fmt.Printf("  %s/%s\n", stack.Namespace, stack.Name)
-	}
+		if exists {
+			return h.updateStack(stack)
+		}
 
-	fmt.Println("matching stacks:")
-	matchingStacks := getMatchingStacks(currentStacks, desiredStacks)
-	for _, stack := range matchingStacks.Items {
-		fmt.Printf("  %s/%s\n", stack.Namespace, stack.Name)
-	}
-
-	fmt.Println("superfluous stacks:")
-	superfluousStacks := getSuperfluousStacks(currentStacks, desiredStacks)
-	for _, stack := range superfluousStacks {
-		fmt.Printf("  %s (%s)\n", aws.StringValue(stack.StackName), aws.StringValue(stack.StackId))
-	}
-
-	fmt.Println("missing stacks:")
-	missingStacks := getMissingStacks(currentStacks, desiredStacks)
-	for _, stack := range missingStacks.Items {
-		fmt.Printf("  %s/%s\n", stack.Namespace, stack.Name)
-	}
-
-	for _, stack := range matchingStacks.Items {
-		updateStack(svc, client, stack,dryRun)
-	}
-
-	for _, stack := range superfluousStacks {
-		deleteStack(svc, stack,dryRun)
-	}
-
-	for _, stack := range missingStacks.Items {
-		createStack(svc, client, stack,dryRun)
+		return h.createStack(stack)
 	}
 
 	return nil
 }
 
-func getCurrentStacks(svc cloudformationiface.CloudFormationAPI) []*cloudformation.Stack {
-	stacks, err := svc.DescribeStacks(&cloudformation.DescribeStacksInput{})
-	if err != nil {
-		log.Fatal(err)
-	}
+func (h *Handler) createStack(stack *v1alpha1.Stack) error {
+	logrus.WithField("stack", stack.Name).Info("creating stack")
 
-	ownedStacks := []*cloudformation.Stack{}
-
-	for _, stack := range stacks.Stacks {
-		for _, tag := range stack.Tags {
-			if aws.StringValue(tag.Key) == ownerTagKey && aws.StringValue(tag.Value) == ownerTagValue {
-				ownedStacks = append(ownedStacks, stack)
-			}
-		}
-	}
-
-	return ownedStacks
-}
-
-func getDesiredStacks(client clientset.Interface) *v1alpha1.StackList {
-	stackList, err := client.CloudformationV1alpha1().Stacks(v1.NamespaceAll).List(metav1.ListOptions{})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return stackList
-}
-
-func getMatchingStacks(current []*cloudformation.Stack, desired *v1alpha1.StackList) v1alpha1.StackList {
-	stackList := v1alpha1.StackList{Items: []v1alpha1.Stack{}}
-
-	for _, ds := range desired.Items {
-		for _, cs := range current {
-			if aws.StringValue(cs.StackName) == ds.Name {
-				stackList.Items = append(stackList.Items, ds)
-			}
-		}
-	}
-
-	return stackList
-}
-
-func getSuperfluousStacks(current []*cloudformation.Stack, desired *v1alpha1.StackList) []*cloudformation.Stack {
-	stacks := []*cloudformation.Stack{}
-
-	for _, cs := range current {
-		found := false
-
-		for _, ds := range desired.Items {
-			if aws.StringValue(cs.StackName) == ds.Name {
-				found = true
-			}
-		}
-
-		if !found {
-			stacks = append(stacks, cs)
-		}
-	}
-
-	return stacks
-}
-
-func getMissingStacks(current []*cloudformation.Stack, desired *v1alpha1.StackList) v1alpha1.StackList {
-	stackList := v1alpha1.StackList{
-		Items: []v1alpha1.Stack{},
-	}
-
-	for _, ds := range desired.Items {
-		found := false
-
-		for _, cs := range current {
-			if aws.StringValue(cs.StackName) == ds.Name {
-				found = true
-			}
-		}
-
-		if !found {
-			stackList.Items = append(stackList.Items, ds)
-		}
-	}
-
-	return stackList
-}
-
-func createStack(svc cloudformationiface.CloudFormationAPI, client clientset.Interface, stack v1alpha1.Stack, dryRun bool) {
-	fmt.Printf("creating stack: %s\n", stack.Name)
-
-	if dryRun {
-		fmt.Println("skipping...")
-		return
+	if h.dryRun {
+		logrus.WithField("stack", stack.Name).Info("skipping stack creation")
+		return nil
 	}
 
 	params := []*cloudformation.Parameter{}
@@ -278,43 +100,23 @@ func createStack(svc cloudformationiface.CloudFormationAPI, client clientset.Int
 			},
 		},
 	}
-	if _, err := svc.CreateStack(input); err != nil {
-		log.Fatal(err)
+	if _, err := h.client.CreateStack(input); err != nil {
+		return err
 	}
 
-	for {
-		foundStack := getStack(svc, stack.Name)
-
-		fmt.Printf("Stack status: %s\n", aws.StringValue(foundStack.StackStatus))
-
-		if aws.StringValue(foundStack.StackStatus) != cloudformation.StackStatusCreateInProgress {
-			break
-		}
-
-		time.Sleep(time.Second)
+	if err := h.waitWhile(stack, cloudformation.StackStatusCreateInProgress); err != nil {
+		return err
 	}
 
-	foundStack := getStack(svc, stack.Name)
-
-	stackCopy := stack.DeepCopy()
-	stackCopy.Status.StackID = aws.StringValue(foundStack.StackId)
-
-	stackCopy.Status.Outputs = map[string]string{}
-	for _, output := range foundStack.Outputs {
-		stackCopy.Status.Outputs[aws.StringValue(output.OutputKey)] = aws.StringValue(output.OutputValue)
-	}
-
-	if _, err := client.CloudformationV1alpha1().Stacks(stack.Namespace).Update(stackCopy); err != nil {
-		log.Fatal(err)
-	}
+	return h.updateStackStatus(stack)
 }
 
-func updateStack(svc cloudformationiface.CloudFormationAPI, client clientset.Interface, stack v1alpha1.Stack, dryRun bool) {
-	fmt.Printf("updating stack: %s\n", stack.Name)
+func (h *Handler) updateStack(stack *v1alpha1.Stack) error {
+	logrus.WithField("stack", stack.Name).Info("updating stack")
 
-	if dryRun {
-		fmt.Println("skipping...")
-		return
+	if h.dryRun {
+		logrus.WithField("stack", stack.Name).Info("skipping stack update")
+		return nil
 	}
 
 	params := []*cloudformation.Parameter{}
@@ -331,87 +133,137 @@ func updateStack(svc cloudformationiface.CloudFormationAPI, client clientset.Int
 		Parameters:   params,
 	}
 
-	if _, err := svc.UpdateStack(input); err != nil {
+	if _, err := h.client.UpdateStack(input); err != nil {
 		if strings.Contains(err.Error(), "No updates are to be performed.") {
-			fmt.Println("Stack update not needed.")
-			return
-		}
-		log.Fatal(err)
-	}
-
-	for {
-		foundStack := getStack(svc, stack.Name)
-
-		fmt.Printf("Stack status: %s\n", aws.StringValue(foundStack.StackStatus))
-
-		if aws.StringValue(foundStack.StackStatus) != cloudformation.StackStatusUpdateInProgress {
-			break
-		}
-
-		time.Sleep(time.Second)
-	}
-
-	foundStack := getStack(svc, stack.Name)
-
-	stackCopy := stack.DeepCopy()
-	stackCopy.Status.StackID = aws.StringValue(foundStack.StackId)
-
-	stackCopy.Status.Outputs = map[string]string{}
-	for _, output := range foundStack.Outputs {
-		stackCopy.Status.Outputs[aws.StringValue(output.OutputKey)] = aws.StringValue(output.OutputValue)
-	}
-
-	if _, err := client.CloudformationV1alpha1().Stacks(stack.Namespace).Update(stackCopy); err != nil {
-		log.Fatal(err)
-	}
-}
-
-func deleteStack(svc cloudformationiface.CloudFormationAPI, stack *cloudformation.Stack,dryRun bool) {
-	fmt.Printf("deleting stack: %s\n", aws.StringValue(stack.StackName))
-
-	if dryRun {
-		fmt.Println("skipping...")
-		return
-	}
-
-	input := &cloudformation.DeleteStackInput{
-		StackName: stack.StackName,
-	}
-
-	if _, err := svc.DeleteStack(input); err != nil {
-		log.Fatal(err)
-	}
-
-	for {
-		foundStack := getStack(svc, aws.StringValue(stack.StackName))
-
-		if foundStack == nil {
-			break
-		}
-
-		fmt.Printf("Stack status: %s\n", aws.StringValue(foundStack.StackStatus))
-
-		if aws.StringValue(foundStack.StackStatus) != cloudformation.StackStatusDeleteInProgress {
-			break
-		}
-
-		time.Sleep(time.Second)
-	}
-}
-
-func getStack(svc cloudformationiface.CloudFormationAPI, name string) *cloudformation.Stack {
-	resp, err := svc.DescribeStacks(&cloudformation.DescribeStacksInput{
-		StackName: aws.String(name),
-	})
-	if err != nil {
-		if strings.Contains(err.Error(), "does not exist") {
+			logrus.WithField("stack", stack.Name).Debug("stack already updated")
 			return nil
 		}
-		log.Fatal(err)
+		return err
 	}
-	if len(resp.Stacks) == 0 {
+
+	if err := h.waitWhile(stack, cloudformation.StackStatusUpdateInProgress); err != nil {
+		return err
+	}
+
+	return h.updateStackStatus(stack)
+}
+
+func (h *Handler) deleteStack(stack *v1alpha1.Stack) error {
+	logrus.WithField("stack", stack.Name).Info("deleting stack")
+
+	if h.dryRun {
+		logrus.WithField("stack", stack.Name).Info("skipping stack deletion")
 		return nil
 	}
 
-	return resp.Stacks[0]
+	input := &cloudformation.DeleteStackInput{
+		StackName: aws.String(stack.Name),
+	}
+
+	if _, err := h.client.DeleteStack(input); err != nil {
+		return err
+	}
+
+	return h.waitWhile(stack, cloudformation.StackStatusDeleteInProgress)
+}
+
+func (h *Handler) getStack(stack *v1alpha1.Stack) (*cloudformation.Stack, error) {
+	resp, err := h.client.DescribeStacks(&cloudformation.DescribeStacksInput{
+		StackName: aws.String(stack.Name),
+	})
+	if err != nil {
+		if strings.Contains(err.Error(), "does not exist") {
+			return nil, ErrStackNotFound
+		}
+		return nil, err
+	}
+	if len(resp.Stacks) != 1 {
+		return nil, ErrStackNotFound
+	}
+
+	return resp.Stacks[0], nil
+}
+
+func (h *Handler) stackExists(stack *v1alpha1.Stack) (bool, error) {
+	_, err := h.getStack(stack)
+	if err != nil {
+		if err == ErrStackNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (h *Handler) hasOwnership(stack *v1alpha1.Stack) (bool, error) {
+	exists, err := h.stackExists(stack)
+	if err != nil {
+		return false, err
+	}
+	if !exists {
+		return true, nil
+	}
+
+	cfs, err := h.getStack(stack)
+	if err != nil {
+		return false, err
+	}
+
+	for _, tag := range cfs.Tags {
+		if aws.StringValue(tag.Key) == ownerTagKey && aws.StringValue(tag.Value) == ownerTagValue {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func (h *Handler) updateStackStatus(stack *v1alpha1.Stack) error {
+	cfs, err := h.getStack(stack)
+	if err != nil {
+		return err
+	}
+
+	stackID := aws.StringValue(cfs.StackId)
+	outputs := map[string]string{}
+	for _, output := range cfs.Outputs {
+		outputs[aws.StringValue(output.OutputKey)] = aws.StringValue(output.OutputValue)
+	}
+
+	if stackID != stack.Status.StackID || !reflect.DeepEqual(outputs, stack.Status.Outputs) {
+		stack.Status.StackID = stackID
+		stack.Status.Outputs = outputs
+
+		if err := action.Update(stack); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (h *Handler) waitWhile(stack *v1alpha1.Stack, status string) error {
+	for {
+		cfs, err := h.getStack(stack)
+		if err != nil {
+			if err == ErrStackNotFound {
+				return nil
+			}
+			return err
+		}
+		current := aws.StringValue(cfs.StackStatus)
+
+		logrus.WithFields(logrus.Fields{
+			"stack":  stack.Name,
+			"status": current,
+		}).Debug("waiting for stack")
+
+		if current == status {
+			time.Sleep(time.Second)
+			continue
+		}
+
+		return nil
+	}
 }

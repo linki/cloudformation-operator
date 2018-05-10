@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/enekofb/cloudformation-operator.svg?branch=master)](https://travis-ci.com/enekofb/cloudformation-operator)
+[![Build Status](https://travis-ci.com/linki/cloudformation-operator.svg?branch=master)](https://travis-ci.com/linki/cloudformation-operator)
 
 # cloudformation-operator
 
@@ -6,35 +6,21 @@ A Kubernetes operator for managing CloudFormation stacks via `kubectl` and a cus
 
 **Warning: this project is in alpha state. It should only be used to try out the demo and get the general idea.**
 
-# Setup
+**This version uses the new operator-sdk. It's untested and may not work correctly**
+
+# Deploy to a cluster
 
 You need API access to a cluster running at least Kubernetes v1.7.
 
-Start the CloudFormation operator in your cluster by using the following manifest:
+Start the CloudFormation operator in your cluster by using the provided manifests:
 
-```yaml
-apiVersion: extensions/v1beta1
-kind: Deployment
-metadata:
-  name: cloudformation-operator
-spec:
-  template:
-    metadata:
-      labels:
-        app: cloudformation-operator
-    spec:
-      containers:
-      - name: cloudformation-operator
-        image: quay.io/linki/cloudformation-operator:v0.1.1
-        args:
-        - --region=eu-central-1
-        - --interval=1m
-        - --debug
+```console
+$ kubectl create -f deploy/rbac.yaml
+$ kubectl create -f deploy/crd.yaml
+$ kubectl create -f deploy/operator.yaml
 ```
 
-Modify the `region` flag to match your cluster's. 
-
-If your Kubernetes cluster uses RBAC, you will need to also need to apply the [manifests/rbac.yaml](manifests/rbac.yaml) manifest to allow cloudformation-operator to manage stack resources.
+Modify the `region` flag to match your cluster's.
 
 Additionally you need to make sure that the operator Pod has enough AWS IAM permissions to create, update and delete CloudFormation stacks as well as permission to modify any resources that are part of the CloudFormation stacks you intend to deploy. In order to follow the example below it needs access to CloudFormation as well as S3.
 
@@ -59,21 +45,14 @@ Once running the operator should print some output but shouldn't actually do any
 
 # Demo
 
-Create a new custom resource called `Stack` by submitting `manifests/crd-cloudformation-stack.yaml` to your cluster.
-
-```console
-$ kubectl apply -f manifests/crd-cloudformation-stack.yaml
-customresourcedefinition "stacks.cloudformation.linki.space" created
-```
-
-This will add another resource to your cluster that feels much like a native Kubernetes resource.
+Currently you don't have any stacks.
 
 ```console
 $ kubectl get stacks
 No resources found.
 ```
 
-Currently you don't have any stacks. Let's create a simple one that manages an S3 bucket:
+Let's create a simple one that manages an S3 bucket:
 
 ```yaml
 apiVersion: cloudformation.linki.space/v1alpha1
@@ -99,7 +78,7 @@ The `spec` section describes an attribute called `template` which contains a reg
 Go ahead and submit the stack definition to your cluster:
 
 ```console
-$ kubectl apply -f manifests/cfs-my-bucket-v1.yaml
+$ kubectl apply -f examples/cfs-my-bucket-v1.yaml
 stack "my-bucket" created
 $ kubectl get stacks
 NAME        AGE
@@ -148,7 +127,7 @@ spec:
 As with most Kubernetes resources you can update your `Stack` resource by applying a changed manifest to your Kubernetes cluster or by using `kubectl edit stack my-stack`.
 
 ```console
-$ kubectl apply -f manifests/cfs-my-bucket-v2.yaml
+$ kubectl apply -f examples/cfs-my-bucket-v2.yaml
 stack "my-bucket" configured
 ```
 
@@ -188,7 +167,7 @@ spec:
 and apply it to your cluster:
 
 ```console
-$ kubectl apply -f manifests/cfs-my-bucket-v3.yaml
+$ kubectl apply -f examples/cfs-my-bucket-v3.yaml
 stack "my-bucket" configured
 ```
 
@@ -233,7 +212,7 @@ spec:
 Apply the change to our cluster and wait until the operator has successfully updated the CloudFormation stack.
 
 ```console
-$ kubectl apply -f manifests/cfs-my-bucket-v4.yaml
+$ kubectl apply -f examples/cfs-my-bucket-v4.yaml
 stack "my-bucket" configured
 ```
 
@@ -265,69 +244,32 @@ Check your CloudFormation console once more and validate that your stack as well
 
 ![Delete stack](docs/img/stack-delete.png)
 
-# Enabled to Operator-SDK
+# Cleanup
 
-Enabled to use the [operator sdk](https://github.com/operator-framework/operator-sdk)
+Clean up the resources:
 
-## Build docker image 
-
-```
-$ operator-sdk build enekofb/cloudformation-operator
-$ docker push enekofb/cloudformation-operator
-```
-
-## Deploying the operator 
-
-```
-$ kubectl create -f deploy/rbac.yaml
-$ kubectl create -f deploy/crd.yaml
-$ kubectl create -f deploy/operator.yaml 
+```console
+$ kubectl delete -f examples/
+$ kubectl delete -f deploy/rbac.yaml
+$ kubectl delete -f deploy/crd.yaml
+$ kubectl delete -f deploy/operator.yaml
 ```
 
-## Running the operator against local kube
+# Build and run locally
 
-```
-$ operator-sdk up local
-```
+This project uses the [operator sdk](https://github.com/operator-framework/operator-sdk).
 
-## Crate a resource
-
-`kubectl create -f deploy/cr.yaml`
-
-and see the logs
-
-```
-➜  cloudformation-operator git:(refactor-opeartor-sdk) operator-sdk up local
-INFO[0000] Go Version: go1.10.1
-INFO[0000] Go OS/Arch: darwin/amd64
-INFO[0000] operator-sdk Version: 0.0.5+git
-INFO[0000] Targeting cluster at https://192.168.99.100:8443
-INFO[0000] starting stacks controller
-current stacks:
-desired stacks:
-  default/stack-example
-matching stacks:
-superfluous stacks:
-missing stacks:
-  default/stack-example
-creating stack: stack-example
-Stack status: CREATE_IN_PROGRESS
-Stack status: CREATE_IN_PROGRESS
-...
-Stack status: CREATE_IN_PROGRESS
-Stack status: CREATE_COMPLETE
-current stacks:
-  stack-example (arn:aws:cloudformation:us-west-2:799964998218:stack/stack-example/e42e3e40-5313-11e8-b601-50a68a201256)
-desired stacks:
-  default/stack-example
-matching stacks:
-  default/stack-example
-superfluous stacks:
-missing stacks:
-updating stack: stack-example
-Stack update not needed.
-current stacks:
-  stack-example (arn:aws:cloudformation:us-west-2:799964998218:stack/stack-example/e42e3e40-5313-11e8-b601-50a68a201256)
-desired stacks:
+```console
+$ dep ensure -vendor-only
+$ go build -o ./tmp/_output/bin/cloudformation-operator ./cmd/cloudformation-operator
+$ KUBERNETES_CONFIG=~/.kube/config ./tmp/_output/bin/cloudformation-operator --region eu-central-1
+$ # this doesn't quite work yet
+$ operator-sdk up local --region eu-central-1
 ```
 
+## Build the docker image
+
+```console
+$ operator-sdk build quay.io/linki/cloudformation-operator:v0.2.0-alpha.0
+$ docker push quay.io/linki/cloudformation-operator:v0.2.0-alpha.0
+```

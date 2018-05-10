@@ -6,26 +6,17 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      name: cloudformation-operator
+      app: cloudformation-operator
   template:
     metadata:
       labels:
-        name: cloudformation-operator
+        app: cloudformation-operator
     spec:
       containers:
-        - name: cloudformation-operator
-          image: enekofb/cloudformation-operator
-          command:
-          - cloudformation-operator
-          args:
-          - --region=us-west-2
-          - --debug
-          imagePullPolicy: Always
-          volumeMounts:
-          - mountPath: /home/cloudformation-operator/.aws
-            name: aws
-      volumes:
-      - hostPath:
-          path: /Users/efernandezbrei/.aws
-        name: aws
-
+      - name: cloudformation-operator
+        image: quay.io/linki/cloudformation-operator:v0.2.0-alpha.0
+        command:
+        - cloudformation-operator
+        args:
+        - --region=eu-central-1
+        imagePullPolicy: Always

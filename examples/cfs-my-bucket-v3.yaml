@@ -1,0 +1,22 @@
+apiVersion: cloudformation.linki.space/v1alpha1
+kind: Stack
+metadata:
+  name: my-bucket
+spec:
+  parameters:
+    VersioningConfiguration: Enabled
+  template: |
+    ---
+    AWSTemplateFormatVersion: '2010-09-09'
+
+    Parameters:
+      VersioningConfiguration:
+        Type: String
+
+    Resources:
+      S3Bucket:
+        Type: AWS::S3::Bucket
+        Properties:
+          VersioningConfiguration:
+            Status:
+              Ref: VersioningConfiguration
