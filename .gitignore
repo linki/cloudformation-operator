@@ -12,3 +12,6 @@
 
 # Ignore vendored Go libraries
 vendor/
+
+# Ignore build artifacts
+tmp/_output/

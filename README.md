@@ -4,18 +4,32 @@ A Kubernetes operator for managing CloudFormation stacks via `kubectl` and a cus
 
 **Warning: this project is in alpha state. It should only be used to try out the demo and get the general idea.**
 
-# Setup
+**This version uses the new operator-sdk and may not work correctly. Use one of the released versions: https://github.com/linki/cloudformation-operator/releases**
+
+# Build and run locally
+
+```console
+$ dep ensure -vendor-only
+$ go build -o ./tmp/_output/bin/cloudformation-operator ./cmd/cloudformation-operator
+$ KUBERNETES_CONFIG=~/.kube/config ./tmp/_output/bin/cloudformation-operator --region eu-central-1
+```
+
+# Deploy to a cluster
 
 You need API access to a cluster running at least Kubernetes v1.7.
 
 Start the CloudFormation operator in your cluster by using the following manifest:
 
 ```yaml
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: cloudformation-operator
 spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloudformation-operator
   template:
     metadata:
       labels:
@@ -23,14 +37,15 @@ spec:
     spec:
       containers:
       - name: cloudformation-operator
-        image: quay.io/linki/cloudformation-operator:v0.1.1
+        image: quay.io/linki/cloudformation-operator:v0.2.0+git
+        command:
+        - cloudformation-operator
         args:
         - --region=eu-central-1
-        - --interval=1m
-        - --debug
+        imagePullPolicy: Always
 ```
 
-Modify the `region` flag to match your cluster's. 
+Modify the `region` flag to match your cluster's.
 
 If your Kubernetes cluster uses RBAC, you will need to also need to apply the [manifests/rbac.yaml](manifests/rbac.yaml) manifest to allow cloudformation-operator to manage stack resources.
 

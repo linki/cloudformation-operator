@@ -1,0 +1,3 @@
+apiVersion: cloudformation.linki.space/v1alpha1
+kind: Stack
+projectName: cloudformation-operator
