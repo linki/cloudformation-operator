@@ -314,6 +314,7 @@ func updateStack(svc cloudformationiface.CloudFormationAPI, client clientset.Int
 
 	if dryRun {
 		fmt.Println("skipping...")
+		return
 	}
 
 	params := []*cloudformation.Parameter{}
@@ -370,6 +371,7 @@ func deleteStack(svc cloudformationiface.CloudFormationAPI, stack *cloudformatio
 
 	if dryRun {
 		fmt.Println("skipping...")
+		return
 	}
 
 	input := &cloudformation.DeleteStackInput{
