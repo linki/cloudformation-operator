@@ -273,3 +273,43 @@ $ operator-sdk up local --region eu-central-1
 $ operator-sdk build quay.io/linki/cloudformation-operator:v0.2.0-alpha.0
 $ docker push quay.io/linki/cloudformation-operator:v0.2.0-alpha.0
 ```
+
+## Test it locally
+
+Needs the workaround of assigning values to the args so there is no way to setup args using `operator-sdk up local` command.
+So just setup `region` value to start with.
+
+```go
+func init() {
+    kingpin.Flag("namespace", "The Kubernetes namespace to watch").Default("default").StringVar(&namespace)
+    kingpin.Flag("region", "The AWS region to use").Default("us-west-2").StringVar(&region)
+    kingpin.Flag("dry-run", "If true, don't actually do anything.").BoolVar(&dryRun)
+    kingpin.Flag("debug", "Enable debug logging.").Default("true").BoolVar(&debug)
+}
+```
+
+**Assumed that you are using minikube
+
+```console
+
+
+$ minikube start # you will be have a kubeconfig read to use by cloudformation operator
+$ export AWS_PROFILE=my_profile # setup your aws config
+$ cd $GOPATH/src/github.com/linki/cloudformation-operator
+$ operator-sdk up local # run cloudformation operator based on previous settings
+
+```
+
+and it will start
+
+```console
+$ operator-sdk up local
+INFO[0000] Go Version: go1.10.1
+INFO[0000] Go OS/Arch: darwin/amd64
+INFO[0000] operator-sdk Version: 0.0.5+git
+INFO[0000] cloudformation-operator Version: 0.2.0+git
+INFO[0000] starting stacks controller
+
+```
+
+
