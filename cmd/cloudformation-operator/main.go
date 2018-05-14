@@ -25,10 +25,10 @@ var (
 )
 
 func init() {
-	kingpin.Flag("namespace", "The Kubernetes namespace to watch").Default("default").StringVar(&namespace)
-	kingpin.Flag("region", "The AWS region to use").Required().StringVar(&region)
-	kingpin.Flag("dry-run", "If true, don't actually do anything.").BoolVar(&dryRun)
-	kingpin.Flag("debug", "Enable debug logging.").BoolVar(&debug)
+	kingpin.Flag("namespace", "The Kubernetes namespace to watch").Default("default").Envar("NAMESPACE").StringVar(&namespace)
+	kingpin.Flag("region", "The AWS region to use").Envar("AWS_REGION").StringVar(&region)
+	kingpin.Flag("dry-run", "If true, don't actually do anything.").Envar("DRY_RUN").BoolVar(&dryRun)
+	kingpin.Flag("debug", "Enable debug logging.").Envar("DEBUG").BoolVar(&debug)
 }
 
 func printVersion() {
