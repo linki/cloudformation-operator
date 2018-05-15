@@ -277,7 +277,7 @@ $ docker push quay.io/linki/cloudformation-operator:v0.2.0-alpha.0
 ## Test it locally
 
 The `operator-sdk` doesn't allow to pass in flags, so instead use the environment variables
-`NAMESPACE`, `AWS_REGION` (and/or `AWS_PROFILE`), `DRY_RUN`, and `DEBUG`.
+`WATCH_NAMESPACE`, `AWS_REGION` (and/or `AWS_PROFILE`), `DRY_RUN`, and `DEBUG`.
 
 Assuming you are using minikube:
 
@@ -286,7 +286,7 @@ $ minikube start # you will be have a kubeconfig read to use by cloudformation o
 $ export AWS_PROFILE=my_profile # setup your aws config
 $ cd $GOPATH/src/github.com/linki/cloudformation-operator
 $ # run cloudformation operator based on previous settings and env vars
-$ NAMESPACE=staging DRY_RUN=true DEBUG=true AWS_REGION=eu-central-1 operator-sdk up local
+$ WATCH_NAMESPACE=staging DRY_RUN=true DEBUG=true AWS_REGION=eu-central-1 operator-sdk up local
 INFO[0000] Go Version: go1.10.1
 INFO[0000] Go OS/Arch: darwin/amd64
 INFO[0000] operator-sdk Version: 0.0.5+git
