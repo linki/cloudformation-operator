@@ -1,17 +1,24 @@
-[[override]]
-  name = "k8s.io/api"
-  version = "kubernetes-1.9.3"
-
-[[override]]
-  name = "k8s.io/apimachinery"
-  version = "kubernetes-1.9.3"
-
-[[override]]
-  name = "k8s.io/client-go"
-  version = "kubernetes-1.9.3"
+[[constraint]]
+  name = "github.com/aws/aws-sdk-go"
+  version = "~v1.13.48"
 
 [[constraint]]
-  name = "github.com/operator-framework/operator-sdk"
-  # The version rule is used for a specific release and the master branch for in between releases.
+  name = "github.com/sirupsen/logrus"
+  version = "~1.0.5"
+
+[[constraint]]
+  name = "github.com/alecthomas/kingpin"
+  version = "~2.2.6"
+
+[[constraint]]
+  branch = "release-1.10"
+  name = "k8s.io/apimachinery"
+
+[[constraint]]
   branch = "master"
-  # version = "=v0.0.5"
+  name = "github.com/operator-framework/operator-sdk"
+
+[prune]
+  go-tests = true
+  non-go = true
+  unused-packages = true

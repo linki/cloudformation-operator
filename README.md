@@ -270,8 +270,10 @@ $ AWS_REGION=eu-central-1 operator-sdk up local
 ## Build the docker image
 
 ```console
-$ operator-sdk build quay.io/linki/cloudformation-operator:v0.2.0-alpha.0
-$ docker push quay.io/linki/cloudformation-operator:v0.2.0-alpha.0
+$ operator-sdk build quay.io/linki/cloudformation-operator:v0.2.0
+$ docker push quay.io/linki/cloudformation-operator:v0.2.0
+$ # or use the previously used Dockerfile (not the one from operator-sdk)
+$ docker build -t quay.io/linki/cloudformation-operator:v0.2.0 .
 ```
 
 ## Test it locally
