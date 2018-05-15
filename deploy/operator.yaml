@@ -14,9 +14,8 @@ spec:
     spec:
       containers:
       - name: cloudformation-operator
-        image: quay.io/linki/cloudformation-operator:v0.2.0-alpha.0
+        image: quay.io/linki/cloudformation-operator:v0.2.0
         command:
         - cloudformation-operator
         args:
         - --region=eu-central-1
-        imagePullPolicy: Always
