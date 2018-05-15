@@ -4,11 +4,10 @@ metadata:
   name: stacks.cloudformation.linki.space
 spec:
   group: cloudformation.linki.space
-  version: v1alpha1
-  scope: Namespaced
   names:
+    kind: Stack
+    listKind: StackList
     plural: stacks
     singular: stack
-    kind: Stack
-    shortNames:
-    - cfs
+  scope: Namespaced
+  version: v1alpha1

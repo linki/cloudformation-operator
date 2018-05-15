@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudformation-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloudformation-operator
+  template:
+    metadata:
+      labels:
+        app: cloudformation-operator
+    spec:
+      containers:
+      - name: cloudformation-operator
+        image: quay.io/linki/cloudformation-operator:v0.2.0-alpha.0
+        command:
+        - cloudformation-operator
+        args:
+        - --region=eu-central-1
+        imagePullPolicy: Always

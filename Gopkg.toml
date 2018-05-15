@@ -1,44 +1,17 @@
-required = [
-  "k8s.io/code-generator/cmd/client-gen",
-  "k8s.io/code-generator/cmd/deepcopy-gen",
-  "k8s.io/code-generator/cmd/defaulter-gen",
-  "k8s.io/code-generator/cmd/informer-gen",
-  "k8s.io/code-generator/cmd/lister-gen",
-]
-
-[[constraint]]
-  name = "github.com/aws/aws-sdk-go"
-  version = "~1.12.70"
-
-[[constraint]]
-  branch = "master"
-  name = "github.com/golang/glog"
-
-[[constraint]]
-  name = "github.com/sirupsen/logrus"
-  version = "~1.0.4"
-
-[[constraint]]
-  name = "gopkg.in/alecthomas/kingpin.v2"
-  version = "~2.2.6"
-
-[[constraint]]
-  branch = "release-1.9"
+[[override]]
   name = "k8s.io/api"
-
-[[constraint]]
-  branch = "release-1.9"
-  name = "k8s.io/apimachinery"
-
-[[constraint]]
-  name = "k8s.io/client-go"
-  version = "~6.0.0"
+  version = "kubernetes-1.9.3"
 
 [[override]]
-  branch = "release-1.9"
-  name = "k8s.io/code-generator"
+  name = "k8s.io/apimachinery"
+  version = "kubernetes-1.9.3"
 
-[prune]
-  go-tests = true
-  non-go = true
-  unused-packages = true
+[[override]]
+  name = "k8s.io/client-go"
+  version = "kubernetes-1.9.3"
+
+[[constraint]]
+  name = "github.com/operator-framework/operator-sdk"
+  # The version rule is used for a specific release and the master branch for in between releases.
+  branch = "master"
+  # version = "=v0.0.5"
