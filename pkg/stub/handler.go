@@ -29,12 +29,13 @@ var (
 )
 
 type Handler struct {
-	client cloudformationiface.CloudFormationAPI
-	dryRun bool
+	client     cloudformationiface.CloudFormationAPI
+	globalTags map[string]string
+	dryRun     bool
 }
 
-func NewHandler(client cloudformationiface.CloudFormationAPI, dryRun bool) handler.Handler {
-	return &Handler{client: client, dryRun: dryRun}
+func NewHandler(client cloudformationiface.CloudFormationAPI, globalTags map[string]string, dryRun bool) handler.Handler {
+	return &Handler{client: client, globalTags: globalTags, dryRun: dryRun}
 }
 
 func (h *Handler) Handle(ctx types.Context, event types.Event) error {
@@ -81,25 +82,13 @@ func (h *Handler) createStack(stack *v1alpha1.Stack) error {
 		return nil
 	}
 
-	params := []*cloudformation.Parameter{}
-	for k, v := range stack.Spec.Parameters {
-		params = append(params, &cloudformation.Parameter{
-			ParameterKey:   aws.String(k),
-			ParameterValue: aws.String(v),
-		})
-	}
-
 	input := &cloudformation.CreateStackInput{
 		StackName:    aws.String(stack.Name),
 		TemplateBody: aws.String(stack.Spec.Template),
-		Parameters:   params,
-		Tags: []*cloudformation.Tag{
-			{
-				Key:   aws.String(ownerTagKey),
-				Value: aws.String(ownerTagValue),
-			},
-		},
+		Parameters:   h.processStackParams(stack),
+		Tags:         h.processStackTags(stack),
 	}
+
 	if _, err := h.client.CreateStack(input); err != nil {
 		return err
 	}
@@ -119,18 +108,11 @@ func (h *Handler) updateStack(stack *v1alpha1.Stack) error {
 		return nil
 	}
 
-	params := []*cloudformation.Parameter{}
-	for k, v := range stack.Spec.Parameters {
-		params = append(params, &cloudformation.Parameter{
-			ParameterKey:   aws.String(k),
-			ParameterValue: aws.String(v),
-		})
-	}
-
 	input := &cloudformation.UpdateStackInput{
 		StackName:    aws.String(stack.Name),
 		TemplateBody: aws.String(stack.Spec.Template),
-		Parameters:   params,
+		Parameters:   h.processStackParams(stack),
+		Tags:         h.processStackTags(stack),
 	}
 
 	if _, err := h.client.UpdateStack(input); err != nil {
@@ -182,6 +164,39 @@ func (h *Handler) getStack(stack *v1alpha1.Stack) (*cloudformation.Stack, error)
 	}
 
 	return resp.Stacks[0], nil
+}
+
+func (h *Handler) processStackParams(stack *v1alpha1.Stack) ([]*cloudformation.Parameter) {
+	params := []*cloudformation.Parameter{}
+	for k, v := range stack.Spec.Parameters {
+		params = append(params, &cloudformation.Parameter{
+			ParameterKey:   aws.String(k),
+			ParameterValue: aws.String(v),
+		})
+	}
+	return params
+}
+
+func (h *Handler) processStackTags(stack *v1alpha1.Stack) ([]*cloudformation.Tag) {
+	tags := []*cloudformation.Tag{
+		{
+			Key:   aws.String(ownerTagKey),
+			Value: aws.String(ownerTagValue),
+		},
+	}
+	for k, v := range h.globalTags {
+		tags = append(tags, &cloudformation.Tag{
+			Key:   aws.String(k),
+			Value: aws.String(v),
+		})
+	}
+	for k, v := range stack.Spec.Tags {
+		tags = append(tags, &cloudformation.Tag{
+			Key:   aws.String(k),
+			Value: aws.String(v),
+		})
+	}
+	return tags
 }
 
 func (h *Handler) stackExists(stack *v1alpha1.Stack) (bool, error) {
