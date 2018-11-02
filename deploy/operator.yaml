@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: cloudformation-operator
-        image: quay.io/linki/cloudformation-operator:v0.2.0
+        image: quay.io/linki/cloudformation-operator:v0.3.0
         command:
         - cloudformation-operator
         args:
