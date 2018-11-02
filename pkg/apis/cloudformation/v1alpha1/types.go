@@ -22,8 +22,9 @@ type Stack struct {
 }
 
 type StackSpec struct {
-	Template   string            `json:"template"`
 	Parameters map[string]string `json:"parameters"`
+	Tags       map[string]string `json:"tags"`
+	Template   string            `json:"template"`
 }
 type StackStatus struct {
 	StackID string            `json:"stackID"`
