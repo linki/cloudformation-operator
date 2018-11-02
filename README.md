@@ -142,7 +142,7 @@ Wait until the operator discovered and executed the change, then look at your AW
 ## Tags
 
 You may want to assign tags to your CloudFormation stacks. The tags added to a CloudFormation stack will be propagated to the managed resources. This feature may be useful in multiple cases, for example, to distinguish resources at billing report. Current operator provides two ways to assign tags:
-- `global-tags` command line argument or `GLOBAL_TAGS` environment variable which allows setting global tags for all resources managed by the operator. This option accepts JSON format where every key is a tag name and value is a tag value. For example '{"foo": "fooValue", "bar": "barValue"}'
+- `--tag` command line argument or `AWS_TAGS` environment variable which allows setting default tags for all resources managed by the operator. The format is `--tag=foo=bar --tag=wambo=baz` on the command line or with a line break when specifying as an env var. (e.g. in zsh: `AWS_TAGS="foo=bar"$'\n'"wambo=baz"`)
 - `tags` parameter at kubernetes resource spec:
 ```yaml
 apiVersion: cloudformation.linki.space/v1alpha1
@@ -164,7 +164,7 @@ spec:
             Status: Enabled
 ```
 
-Resource-specific tags have precedence over the global tags. Thus if a tag is defined at command-line arguments and for a `Stack` resource, the value from the `Stack` resource will be used.
+Resource-specific tags have precedence over the default tags. Thus if a tag is defined at command-line arguments and for a `Stack` resource, the value from the `Stack` resource will be used.
 
 If we run the operation and a `Stack` resource with the described above examples, we'll see such picture:
 
@@ -291,7 +291,7 @@ Argument | Environment variable | Default value | Description
 ---------|----------------------|---------------|------------
 debug | DEBUG | | Enable debug logging.
 dry-run | DRY_RUN | | If true, don't actually do anything.
-global-tags | GLOBAL_TAGS | {} | Global tags which should be applied for all stacks. Current parameter accepts JSON format where every key-value pair defines a tag. Key is a tag name and value is a tag value.
+tag ... | AWS_TAGS | | Default tags which should be applied for all stacks. The format is `--tag=foo=bar --tag=wambo=baz` on the command line or with a line break when specifying as an env var. (e.g. in zsh: `AWS_TAGS="foo=bar"$'\n'"wambo=baz"`)
 namespace | WATCH_NAMESPACE | default | The Kubernetes namespace to watch
 region | AWS_REGION | | The AWS region to use
 
