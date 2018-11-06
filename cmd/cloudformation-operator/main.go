@@ -2,9 +2,13 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"regexp"
 	"runtime"
 
 	"github.com/alecthomas/kingpin"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/sirupsen/logrus"
 
 	stub "github.com/linki/cloudformation-operator/pkg/stub"
@@ -19,18 +23,56 @@ import (
 var (
 	namespace string
 	region    string
-	tags      = map[string]string{}
+	tags      = new(map[string]string)
 	dryRun    bool
 	debug     bool
 	version   = "0.3.0+git"
 )
 
+// -- map[string]string Value
+type stringMapValue map[string]string
+
+func newStringMapValue(p *map[string]string) *stringMapValue {
+	return (*stringMapValue)(p)
+}
+
+var stringMapRegex = regexp.MustCompile("[=]")
+
+func (s *stringMapValue) Set(value string) error {
+	parts := stringMapRegex.Split(value, 2)
+	if len(parts) != 2 {
+		return fmt.Errorf("expected KEY=VALUE got '%s'", value)
+	}
+	(*s)[parts[0]] = parts[1]
+	return nil
+}
+
+func (s *stringMapValue) Get() interface{} {
+	return (map[string]string)(*s)
+}
+
+func (s *stringMapValue) String() string {
+	return fmt.Sprintf("%s", map[string]string(*s))
+}
+
+func (s *stringMapValue) IsCumulative() bool {
+	return true
+}
+
+func StringMap(s kingpin.Settings) (target *map[string]string) {
+	target = &map[string]string{}
+	s.SetValue((*stringMapValue)(target))
+	return
+}
+
 func init() {
 	kingpin.Flag("namespace", "The Kubernetes namespace to watch").Default("default").Envar("WATCH_NAMESPACE").StringVar(&namespace)
 	kingpin.Flag("region", "The AWS region to use").Envar("AWS_REGION").StringVar(&region)
-	kingpin.Flag("tag", "Tags to apply to all Stacks by default. Specify multiple times for multiple tags.").Envar("AWS_TAGS").StringMapVar(&tags)
+	// kingpin.Flag("tag", "Tags to apply to all Stacks by default. Specify multiple times for multiple tags.").Envar("AWS_TAGS").StringMapVar(&tags)
 	kingpin.Flag("dry-run", "If true, don't actually do anything.").Envar("DRY_RUN").BoolVar(&dryRun)
 	kingpin.Flag("debug", "Enable debug logging.").Envar("DEBUG").BoolVar(&debug)
+
+	tags = StringMap(kingpin.Flag("tag", "Tags to apply to all Stacks by default. Specify multiple times for multiple tags.").Envar("AWS_TAGS"))
 }
 
 func printVersion() {
@@ -43,6 +85,9 @@ func printVersion() {
 func main() {
 	kingpin.Version(version)
 	kingpin.Parse()
+
+	spew.Dump(tags)
+	os.Exit(0)
 
 	if debug {
 		logrus.SetLevel(logrus.DebugLevel)
@@ -59,6 +104,6 @@ func main() {
 	})
 
 	sdk.Watch("cloudformation.linki.space/v1alpha1", "Stack", namespace, 0)
-	sdk.Handle(stub.NewHandler(client, tags, dryRun))
+	sdk.Handle(stub.NewHandler(client, *tags, dryRun))
 	sdk.Run(context.TODO())
 }
