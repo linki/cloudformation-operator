@@ -7,6 +7,7 @@ import (
 	"github.com/alecthomas/kingpin"
 	"github.com/sirupsen/logrus"
 
+	"github.com/linki/cloudformation-operator/pkg/argparser"
 	stub "github.com/linki/cloudformation-operator/pkg/stub"
 	sdk "github.com/operator-framework/operator-sdk/pkg/sdk"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
@@ -19,7 +20,7 @@ import (
 var (
 	namespace string
 	region    string
-	tags      = map[string]string{}
+	tags      = new(map[string]string)
 	dryRun    bool
 	debug     bool
 	version   = "0.3.0+git"
@@ -28,9 +29,10 @@ var (
 func init() {
 	kingpin.Flag("namespace", "The Kubernetes namespace to watch").Default("default").Envar("WATCH_NAMESPACE").StringVar(&namespace)
 	kingpin.Flag("region", "The AWS region to use").Envar("AWS_REGION").StringVar(&region)
-	kingpin.Flag("tag", "Tags to apply to all Stacks by default. Specify multiple times for multiple tags.").Envar("AWS_TAGS").StringMapVar(&tags)
 	kingpin.Flag("dry-run", "If true, don't actually do anything.").Envar("DRY_RUN").BoolVar(&dryRun)
 	kingpin.Flag("debug", "Enable debug logging.").Envar("DEBUG").BoolVar(&debug)
+
+	tags = argparser.StringMap(kingpin.Flag("tag", "Tags to apply to all Stacks by default. Specify multiple times for multiple tags.").Envar("AWS_TAGS"))
 }
 
 func printVersion() {
@@ -59,6 +61,6 @@ func main() {
 	})
 
 	sdk.Watch("cloudformation.linki.space/v1alpha1", "Stack", namespace, 0)
-	sdk.Handle(stub.NewHandler(client, tags, dryRun))
+	sdk.Handle(stub.NewHandler(client, *tags, dryRun))
 	sdk.Run(context.TODO())
 }
