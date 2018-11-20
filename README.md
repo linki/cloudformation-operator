@@ -322,10 +322,10 @@ $ AWS_REGION=eu-central-1 operator-sdk up local
 ## Build the docker image
 
 ```console
-$ operator-sdk build quay.io/linki/cloudformation-operator:v0.3.0
-$ docker push quay.io/linki/cloudformation-operator:v0.3.0
+$ operator-sdk build quay.io/linki/cloudformation-operator:v0.4.0
+$ docker push quay.io/linki/cloudformation-operator:v0.4.0
 $ # or use the previously used Dockerfile (not the one from operator-sdk)
-$ docker build -t quay.io/linki/cloudformation-operator:v0.3.0 .
+$ docker build -t quay.io/linki/cloudformation-operator:v0.4.0 .
 ```
 
 ## Test it locally
@@ -344,6 +344,6 @@ $ WATCH_NAMESPACE=staging DRY_RUN=true DEBUG=true AWS_REGION=eu-central-1 operat
 INFO[0000] Go Version: go1.10.1
 INFO[0000] Go OS/Arch: darwin/amd64
 INFO[0000] operator-sdk Version: 0.0.5+git
-INFO[0000] cloudformation-operator Version: 0.3.0+git
+INFO[0000] cloudformation-operator Version: 0.4.0+git
 INFO[0000] starting stacks controller
 ```
