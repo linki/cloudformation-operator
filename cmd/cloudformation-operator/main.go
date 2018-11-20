@@ -24,7 +24,7 @@ var (
 	capabilities = []string{}
 	dryRun       bool
 	debug        bool
-	version      = "0.3.0+git"
+	version      = "0.4.0+git"
 )
 
 func init() {
