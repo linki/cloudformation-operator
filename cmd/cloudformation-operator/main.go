@@ -18,17 +18,19 @@ import (
 )
 
 var (
-	namespace string
-	region    string
-	tags      = new(map[string]string)
-	dryRun    bool
-	debug     bool
-	version   = "0.3.0+git"
+	namespace    string
+	region       string
+	tags         = new(map[string]string)
+	capabilities = []string{}
+	dryRun       bool
+	debug        bool
+	version      = "0.4.0+git"
 )
 
 func init() {
 	kingpin.Flag("namespace", "The Kubernetes namespace to watch").Default("default").Envar("WATCH_NAMESPACE").StringVar(&namespace)
 	kingpin.Flag("region", "The AWS region to use").Envar("AWS_REGION").StringVar(&region)
+	kingpin.Flag("capability", "The AWS CloudFormation capability to enable").Envar("AWS_CAPABILITIES").StringsVar(&capabilities)
 	kingpin.Flag("dry-run", "If true, don't actually do anything.").Envar("DRY_RUN").BoolVar(&dryRun)
 	kingpin.Flag("debug", "Enable debug logging.").Envar("DEBUG").BoolVar(&debug)
 
@@ -61,6 +63,6 @@ func main() {
 	})
 
 	sdk.Watch("cloudformation.linki.space/v1alpha1", "Stack", namespace, 0)
-	sdk.Handle(stub.NewHandler(client, *tags, dryRun))
+	sdk.Handle(stub.NewHandler(client, capabilities, *tags, dryRun))
 	sdk.Run(context.TODO())
 }

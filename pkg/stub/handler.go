@@ -29,13 +29,14 @@ var (
 )
 
 type Handler struct {
-	client     cloudformationiface.CloudFormationAPI
-	defautTags map[string]string
-	dryRun     bool
+	client       cloudformationiface.CloudFormationAPI
+	capabilities []string
+	defautTags   map[string]string
+	dryRun       bool
 }
 
-func NewHandler(client cloudformationiface.CloudFormationAPI, defautTags map[string]string, dryRun bool) handler.Handler {
-	return &Handler{client: client, defautTags: defautTags, dryRun: dryRun}
+func NewHandler(client cloudformationiface.CloudFormationAPI, capabilities []string, defautTags map[string]string, dryRun bool) handler.Handler {
+	return &Handler{client: client, capabilities: capabilities, defautTags: defautTags, dryRun: dryRun}
 }
 
 func (h *Handler) Handle(ctx types.Context, event types.Event) error {
@@ -83,6 +84,7 @@ func (h *Handler) createStack(stack *v1alpha1.Stack) error {
 	}
 
 	input := &cloudformation.CreateStackInput{
+		Capabilities: aws.StringSlice(h.capabilities),
 		StackName:    aws.String(stack.Name),
 		TemplateBody: aws.String(stack.Spec.Template),
 		Parameters:   stackParameters(stack),
@@ -109,6 +111,7 @@ func (h *Handler) updateStack(stack *v1alpha1.Stack) error {
 	}
 
 	input := &cloudformation.UpdateStackInput{
+		Capabilities: aws.StringSlice(h.capabilities),
 		StackName:    aws.String(stack.Name),
 		TemplateBody: aws.String(stack.Spec.Template),
 		Parameters:   stackParameters(stack),
