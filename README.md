@@ -289,6 +289,7 @@ Check your CloudFormation console once more and validate that your stack as well
 
 Argument | Environment variable | Default value | Description
 ---------|----------------------|---------------|------------
+capability | AWS_CAPABILITIES | | Enable specified capabilities for all stacks managed by the operator instance. Current parameter can be used multiple times. For example: `--capability CAPABILITY_NAMED_IAM --capability CAPABILITY_IAM`. Or with a line break when specifying as an environment variable: `AWS_CAPABILITIES=CAPABILITY_IAM$'\n'CAPABILITY_NAMED_IAM`
 debug | DEBUG | | Enable debug logging.
 dry-run | DRY_RUN | | If true, don't actually do anything.
 tag ... | AWS_TAGS | | Default tags which should be applied for all stacks. The format is `--tag=foo=bar --tag=wambo=baz` on the command line or with a line break when specifying as an env var. (e.g. in zsh: `AWS_TAGS="foo=bar"$'\n'"wambo=baz"`)
