@@ -13,13 +13,16 @@ import (
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
+	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
 )
 
 var (
 	namespace    string
 	region       string
+	assumeRole   string
 	tags         = new(map[string]string)
 	capabilities = []string{}
 	dryRun       bool
@@ -30,6 +33,7 @@ var (
 func init() {
 	kingpin.Flag("namespace", "The Kubernetes namespace to watch").Default("default").Envar("WATCH_NAMESPACE").StringVar(&namespace)
 	kingpin.Flag("region", "The AWS region to use").Envar("AWS_REGION").StringVar(&region)
+	kingpin.Flag("assume-role", "Assume AWS role when defined. Useful for stacks in another AWS account. Specify the full ARN, e.g. `arn:aws:iam::123456789:role/cloudformation-operator`").Envar("AWS_ASSUME_ROLE").StringVar(&assumeRole)
 	kingpin.Flag("capability", "The AWS CloudFormation capability to enable").Envar("AWS_CAPABILITIES").StringsVar(&capabilities)
 	kingpin.Flag("dry-run", "If true, don't actually do anything.").Envar("DRY_RUN").BoolVar(&dryRun)
 	kingpin.Flag("debug", "Enable debug logging.").Envar("DEBUG").BoolVar(&debug)
@@ -58,9 +62,21 @@ func main() {
 
 	printVersion()
 
-	client := cloudformation.New(session.New(), &aws.Config{
-		Region: aws.String(region),
-	})
+	var client cloudformationiface.CloudFormationAPI
+	sess := session.Must(session.NewSession())
+	logrus.Info(assumeRole)
+	if assumeRole != "" {
+		logrus.Info("run assume")
+		creds := stscreds.NewCredentials(sess, assumeRole)
+		client = cloudformation.New(sess, &aws.Config{
+			Credentials: creds,
+			Region: aws.String(region),
+		})
+	} else {
+		client = cloudformation.New(sess, &aws.Config{
+			Region: aws.String(region),
+		})
+	}
 
 	sdk.Watch("cloudformation.linki.space/v1alpha1", "Stack", namespace, 0)
 	sdk.Handle(stub.NewHandler(client, capabilities, *tags, dryRun))
