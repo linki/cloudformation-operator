@@ -7,8 +7,8 @@ import (
 	"github.com/alecthomas/kingpin"
 	"github.com/sirupsen/logrus"
 
-	"github.com/linki/cloudformation-operator/pkg/argparser"
-	stub "github.com/linki/cloudformation-operator/pkg/stub"
+	"github.com/Scout24/cloudformation-operator/pkg/argparser"
+	stub "github.com/Scout24/cloudformation-operator/pkg/stub"
 	sdk "github.com/operator-framework/operator-sdk/pkg/sdk"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
 

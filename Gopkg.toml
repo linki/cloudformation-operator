@@ -15,7 +15,7 @@
   name = "k8s.io/apimachinery"
 
 [[constraint]]
-  branch = "master"
+  revision = "8aeaff32fc9c9e8d27f0bf99b5105fe7db09548a"
   name = "github.com/operator-framework/operator-sdk"
 
 [prune]

@@ -16,7 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
 
-	"github.com/linki/cloudformation-operator/pkg/apis/cloudformation/v1alpha1"
+	"github.com/Scout24/cloudformation-operator/pkg/apis/cloudformation/v1alpha1"
 )
 
 const (
