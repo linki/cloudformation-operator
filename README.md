@@ -289,6 +289,7 @@ Check your CloudFormation console once more and validate that your stack as well
 
 Argument | Environment variable | Default value | Description
 ---------|----------------------|---------------|------------
+assume-role | AWS_ASSUME_ROLE | | Assume AWS role when defined. Useful for stacks in another AWS account. Specify the full ARN, e.g. `arn:aws:iam::123456789:role/cloudformation-operator`
 capability | AWS_CAPABILITIES | | Enable specified capabilities for all stacks managed by the operator instance. Current parameter can be used multiple times. For example: `--capability CAPABILITY_NAMED_IAM --capability CAPABILITY_IAM`. Or with a line break when specifying as an environment variable: `AWS_CAPABILITIES=CAPABILITY_IAM$'\n'CAPABILITY_NAMED_IAM`
 debug | DEBUG | | Enable debug logging.
 dry-run | DRY_RUN | | If true, don't actually do anything.
