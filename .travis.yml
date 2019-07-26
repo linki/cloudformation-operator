@@ -6,13 +6,16 @@ os:
 language: go
 
 go:
-- 1.9
+- "1.12"
 - tip
+
+env:
+- GO111MODULE=on
 
 install:
 - go get github.com/mattn/goveralls
 - go get github.com/golang/dep/cmd/dep
-- dep ensure
 
 script:
-- goveralls -service=travis-ci
+- roveralls
+- goveralls -coverprofile=roveralls.coverprofile -service=travis-ci
