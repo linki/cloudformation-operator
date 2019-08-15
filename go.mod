@@ -24,7 +24,7 @@ require (
 	github.com/onsi/ginkgo v1.8.0 // indirect
 	github.com/onsi/gomega v1.5.0 // indirect
 	github.com/operator-framework/operator-sdk v0.0.0-20180514232524-8aeaff32fc9c
-	github.com/sirupsen/logrus v1.0.5
+	github.com/sirupsen/logrus v1.4.2
 	github.com/smartystreets/goconvey v0.0.0-20190710185942-9d28bd7c0945 // indirect
 	github.com/spf13/pflag v1.0.1 // indirect
 	github.com/stretchr/testify v1.3.0 // indirect
