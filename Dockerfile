@@ -11,7 +11,7 @@ RUN go build -o /bin/cloudformation-operator -v \
   ./cmd/cloudformation-operator
 
 # final image
-FROM alpine:3.10.1
+FROM alpine:3.10.2
 MAINTAINER Linki <linki+docker.com@posteo.de>
 
 RUN apk --no-cache add ca-certificates
