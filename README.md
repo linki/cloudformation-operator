@@ -1,4 +1,5 @@
-[![Build Status](https://travis-ci.com/linki/cloudformation-operator.svg?branch=master)](https://travis-ci.com/linki/cloudformation-operator)
+[![GitHub release](https://img.shields.io/github/release/linki/cloudformation-operator.svg)](https://github.com/linki/cloudformation-operator/releases)
+[![Docker Repository on Quay](https://quay.io/repository/linki/cloudformation-operator/status "Docker Repository on Quay")](https://quay.io/repository/linki/cloudformation-operator)
 
 # cloudformation-operator
 
