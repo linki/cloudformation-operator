@@ -1,0 +1,15 @@
+apiVersion: cloudformation.linki.space/v1alpha1
+kind: Stack
+metadata:
+  name: my-bucket
+spec:
+  template: |
+    ---
+    AWSTemplateFormatVersion: '2010-09-09'
+
+    Resources:
+      S3Bucket:
+        Type: AWS::S3::Bucket
+        Properties:
+          VersioningConfiguration:
+            Status: Suspended

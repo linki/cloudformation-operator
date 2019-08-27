@@ -1,40 +1,37 @@
 module github.com/linki/cloudformation-operator
 
-go 1.12
-
 require (
-	github.com/alecthomas/kingpin v2.2.6+incompatible
-	github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc // indirect
-	github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf // indirect
-	github.com/aws/aws-sdk-go v1.23.9
-	github.com/ghodss/yaml v1.0.0 // indirect
-	github.com/go-ini/ini v1.36.0 // indirect
-	github.com/gogo/protobuf v1.0.0 // indirect
-	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
-	github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6 // indirect
-	github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf // indirect
-	github.com/googleapis/gnostic v0.1.0 // indirect
-	github.com/hashicorp/golang-lru v0.0.0-20180201235237-0fb14efe8c47 // indirect
-	github.com/howeyc/gopass v0.0.0-20170109162249-bf9dde6d0d2c // indirect
-	github.com/imdario/mergo v0.3.4 // indirect
-	github.com/jmespath/go-jmespath v0.0.0-20160202185014-0b12d6b521d8 // indirect
-	github.com/json-iterator/go v0.0.0-20180315132816-ca39e5af3ece // indirect
-	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
-	github.com/modern-go/reflect2 v0.0.0-20180228065516-1df9eeb2bb81 // indirect
-	github.com/onsi/ginkgo v1.8.0 // indirect
-	github.com/onsi/gomega v1.5.0 // indirect
-	github.com/operator-framework/operator-sdk v0.0.0-20180514232524-8aeaff32fc9c
-	github.com/sirupsen/logrus v1.4.2
-	github.com/smartystreets/goconvey v0.0.0-20190710185942-9d28bd7c0945 // indirect
-	github.com/spf13/pflag v1.0.1 // indirect
-	github.com/stretchr/testify v1.3.0 // indirect
-	golang.org/x/sync v0.0.0-20190423024810-112230192c58 // indirect
-	golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2 // indirect
-	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
-	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
-	gopkg.in/inf.v0 v0.9.1 // indirect
-	gopkg.in/ini.v1 v1.44.0 // indirect
-	k8s.io/api v0.0.0-20180514222526-fbc8bec270ad // indirect
-	k8s.io/apimachinery v0.0.0-20180417142332-01bc873149a1
-	k8s.io/client-go v7.0.0+incompatible // indirect
+	github.com/NYTimes/gziphandler v1.0.1 // indirect
+	github.com/aws/aws-sdk-go v1.23.6
+	github.com/go-openapi/spec v0.19.0
+	github.com/operator-framework/operator-sdk v0.10.1-0.20190820174346-abac23c897b8
+	github.com/sirupsen/logrus v1.4.1
+	github.com/spf13/pflag v1.0.3
+	golang.org/x/tools v0.0.0-20190826234050-71894ab67ee3 // indirect
+	k8s.io/api v0.0.0-20190612125737-db0771252981
+	k8s.io/apimachinery v0.0.0-20190612125636-6a5db36e93ad
+	k8s.io/client-go v11.0.0+incompatible
+	k8s.io/kube-openapi v0.0.0-20190603182131-db7b694dc208
+	sigs.k8s.io/controller-runtime v0.1.12
+	sigs.k8s.io/controller-tools v0.1.10
 )
+
+// Pinned to kubernetes-1.13.4
+replace (
+	k8s.io/api => k8s.io/api v0.0.0-20190222213804-5cb15d344471
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.0.0-20190228180357-d002e88f6236
+	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20190221213512-86fb29eff628
+	k8s.io/client-go => k8s.io/client-go v0.0.0-20190228174230-b40b2a5939e4
+)
+
+replace (
+	github.com/coreos/prometheus-operator => github.com/coreos/prometheus-operator v0.29.0
+	// Pinned to v2.9.2 (kubernetes-1.13.1) so https://proxy.golang.org can
+	// resolve it correctly.
+	github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.0.0-20190424153033-d3245f150225
+	k8s.io/kube-state-metrics => k8s.io/kube-state-metrics v1.6.0
+	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.1.12
+	sigs.k8s.io/controller-tools => sigs.k8s.io/controller-tools v0.1.11-0.20190411181648-9d55346c2bde
+)
+
+replace github.com/operator-framework/operator-sdk => github.com/operator-framework/operator-sdk v0.10.0
