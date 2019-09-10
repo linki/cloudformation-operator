@@ -3,55 +3,62 @@ package stack
 import (
 	"context"
 	coreerrors "errors"
+	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"time"
 
-	// "github.com/alecthomas/kingpin"
-	// "github.com/operator-framework/operator-sdk/pkg/sdk/action"
-	cloudformationv1alpha1 "github.com/linki/cloudformation-operator/pkg/apis/cloudformation/v1alpha1"
+	"github.com/go-logr/logr"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/pflag"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-
-	// "k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/cloudformation"
-	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/cloudformation"
+	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
+
+	cloudformationv1alpha1 "github.com/linki/cloudformation-operator/pkg/apis/cloudformation/v1alpha1"
 )
 
 const (
-	ownerTagKey   = "kubernetes.io/controlled-by"
-	ownerTagValue = "cloudformation.linki.space/operator"
+	controllerKey   = "kubernetes.io/controlled-by"
+	controllerValue = "cloudformation.linki.space/operator"
+	stacksFinalizer = "finalizer.cloudformation.linki.space"
+	ownerKey        = "kubernetes.io/owned-by"
 )
 
 var (
+	StackFlagSet     *pflag.FlagSet
 	ErrStackNotFound = coreerrors.New("stack not found")
 )
 
-// TODO: remove me
-var (
-	Cloudformation cloudformationiface.CloudFormationAPI
-	Tags           = map[string]string{}
-	Capabilities   = []string{}
-	DryRun         bool
-)
+func init() {
+	StackFlagSet = pflag.NewFlagSet("stack", pflag.ExitOnError)
+
+	StackFlagSet.String("region", "eu-central-1", "The AWS region to use")
+	StackFlagSet.String("assume-role", "", "Assume AWS role when defined. Useful for stacks in another AWS account. Specify the full ARN, e.g. `arn:aws:iam::123456789:role/cloudformation-operator`")
+	StackFlagSet.StringToString("tag", map[string]string{}, "Tags to apply to all Stacks by default. Specify multiple times for multiple tags.")
+	StackFlagSet.StringSlice("capability", []string{}, "The AWS CloudFormation capability to enable")
+	StackFlagSet.Bool("dry-run", true, "If true, don't actually do anything.")
+}
 
 var log = logf.Log.WithName("controller_stack")
-
-/**
-* USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
-* business logic.  Delete these comments after modifying this file.*
- */
 
 // Add creates a new Stack Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -61,7 +68,60 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileStack{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	assumeRole, err := StackFlagSet.GetString("assume-role")
+	if err != nil {
+		log.Error(err, "error parsing flag")
+		os.Exit(1)
+	}
+
+	region, err := StackFlagSet.GetString("region")
+	if err != nil {
+		log.Error(err, "error parsing flag")
+		os.Exit(1)
+	}
+
+	defaultTags, err := StackFlagSet.GetStringToString("tag")
+	if err != nil {
+		log.Error(err, "error parsing flag")
+		os.Exit(1)
+	}
+
+	defaultCapabilities, err := StackFlagSet.GetStringSlice("capability")
+	if err != nil {
+		log.Error(err, "error parsing flag")
+		os.Exit(1)
+	}
+
+	dryRun, err := StackFlagSet.GetBool("dry-run")
+	if err != nil {
+		log.Error(err, "error parsing flag")
+		os.Exit(1)
+	}
+
+	var client cloudformationiface.CloudFormationAPI
+	sess := session.Must(session.NewSession())
+	log.Info(assumeRole)
+	if assumeRole != "" {
+		log.Info("run assume")
+		creds := stscreds.NewCredentials(sess, assumeRole)
+		client = cloudformation.New(sess, &aws.Config{
+			Credentials: creds,
+			Region:      aws.String(region),
+		})
+	} else {
+		client = cloudformation.New(sess, &aws.Config{
+			Region: aws.String(region),
+		})
+	}
+
+	return &ReconcileStack{
+		client:              mgr.GetClient(),
+		scheme:              mgr.GetScheme(),
+		cf:                  client,
+		defaultTags:         defaultTags,
+		defaultCapabilities: defaultCapabilities,
+		dryRun:              dryRun,
+	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -88,8 +148,12 @@ var _ reconcile.Reconciler = &ReconcileStack{}
 type ReconcileStack struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client client.Client
-	scheme *runtime.Scheme
+	client              client.Client
+	scheme              *runtime.Scheme
+	cf                  cloudformationiface.CloudFormationAPI
+	defaultTags         map[string]string
+	defaultCapabilities []string
+	dryRun              bool
 }
 
 // Reconcile reads that state of the cluster for a Stack object and makes changes based on the state read
@@ -111,21 +175,43 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			stack := &cloudformationv1alpha1.Stack{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      request.NamespacedName.Name,
-					Namespace: request.NamespacedName.Namespace,
-				},
-			}
-
-			if err := r.deleteStack(stack); err != nil {
-				return reconcile.Result{}, err
-			}
-
+			reqLogger.Info("Memcached resource not found. Ignoring since object must be deleted")
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
+		reqLogger.Error(err, "Failed to get Memcached")
 		return reconcile.Result{}, err
+	}
+
+	// Check if the Memcached instance is marked to be deleted, which is
+	// indicated by the deletion timestamp being set.
+	isStackMarkedToBeDeleted := instance.GetDeletionTimestamp() != nil
+	if isStackMarkedToBeDeleted {
+		if contains(instance.GetFinalizers(), stacksFinalizer) {
+			// Run finalization logic for stacksFinalizer. If the
+			// finalization logic fails, don't remove the finalizer so
+			// that we can retry during the next reconciliation.
+			if err := r.finalizeStacks(reqLogger, instance); err != nil {
+				return reconcile.Result{}, err
+			}
+
+			// Remove stacksFinalizer. Once all finalizers have been
+			// removed, the object will be deleted.
+			instance.SetFinalizers(remove(instance.GetFinalizers(), stacksFinalizer))
+			err := r.client.Update(context.TODO(), instance)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+
+		return reconcile.Result{}, nil
+	}
+
+	// Add finalizer for this CR
+	if !contains(instance.GetFinalizers(), stacksFinalizer) {
+		if err := r.addFinalizer(reqLogger, instance); err != nil {
+			return reconcile.Result{}, err
+		}
 	}
 
 	exists, err := r.stackExists(instance)
@@ -143,28 +229,36 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 func (r *ReconcileStack) createStack(stack *cloudformationv1alpha1.Stack) error {
 	logrus.WithField("stack", stack.Name).Info("creating stack")
 
-	if DryRun {
+	if r.dryRun {
 		logrus.WithField("stack", stack.Name).Info("skipping stack creation")
 		return nil
 	}
 
-	input := &cloudformation.CreateStackInput{
-		Capabilities: aws.StringSlice(Capabilities),
-		StackName:    aws.String(stack.Name),
-		TemplateBody: aws.String(stack.Spec.Template),
-		Parameters:   stackParameters(stack),
-		Tags:         stackTags(stack, Tags),
+	hasOwnership, err := r.hasOwnership(stack)
+	if err != nil {
+		return err
 	}
 
-	// TODO: set owner reference on CF stack for "garbage collection"
-	// remove stack wwhen owner is gone
+	if !hasOwnership {
+		logrus.WithField("stack", stack.Name).Info("no ownerhsip")
+		return nil
+	}
 
-	// // Set Stack instance as the owner and controller
-	// if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
-	// 	return reconcile.Result{}, err
-	// }
+	stackTags, err := r.stackTags(stack)
+	if err != nil {
+		logrus.WithField("stack", stack.Name).Error("error compiling tags")
+		return err
+	}
 
-	if _, err := Cloudformation.CreateStack(input); err != nil {
+	input := &cloudformation.CreateStackInput{
+		Capabilities: aws.StringSlice(r.defaultCapabilities),
+		StackName:    aws.String(stack.Name),
+		TemplateBody: aws.String(stack.Spec.Template),
+		Parameters:   r.stackParameters(stack),
+		Tags:         stackTags,
+	}
+
+	if _, err := r.cf.CreateStack(input); err != nil {
 		return err
 	}
 
@@ -178,20 +272,36 @@ func (r *ReconcileStack) createStack(stack *cloudformationv1alpha1.Stack) error 
 func (r *ReconcileStack) updateStack(stack *cloudformationv1alpha1.Stack) error {
 	logrus.WithField("stack", stack.Name).Info("updating stack")
 
-	if DryRun {
+	if r.dryRun {
 		logrus.WithField("stack", stack.Name).Info("skipping stack update")
 		return nil
 	}
 
-	input := &cloudformation.UpdateStackInput{
-		Capabilities: aws.StringSlice(Capabilities),
-		StackName:    aws.String(stack.Name),
-		TemplateBody: aws.String(stack.Spec.Template),
-		Parameters:   stackParameters(stack),
-		Tags:         stackTags(stack, Tags),
+	hasOwnership, err := r.hasOwnership(stack)
+	if err != nil {
+		return err
 	}
 
-	if _, err := Cloudformation.UpdateStack(input); err != nil {
+	if !hasOwnership {
+		logrus.WithField("stack", stack.Name).Info("no ownerhsip")
+		return nil
+	}
+
+	stackTags, err := r.stackTags(stack)
+	if err != nil {
+		logrus.WithField("stack", stack.Name).Error("error compiling tags")
+		return err
+	}
+
+	input := &cloudformation.UpdateStackInput{
+		Capabilities: aws.StringSlice(r.defaultCapabilities),
+		StackName:    aws.String(stack.Name),
+		TemplateBody: aws.String(stack.Spec.Template),
+		Parameters:   r.stackParameters(stack),
+		Tags:         stackTags,
+	}
+
+	if _, err := r.cf.UpdateStack(input); err != nil {
 		if strings.Contains(err.Error(), "No updates are to be performed.") {
 			logrus.WithField("stack", stack.Name).Debug("stack already updated")
 			return nil
@@ -209,18 +319,26 @@ func (r *ReconcileStack) updateStack(stack *cloudformationv1alpha1.Stack) error 
 func (r *ReconcileStack) deleteStack(stack *cloudformationv1alpha1.Stack) error {
 	logrus.WithField("stack", stack.Name).Info("deleting stack")
 
-	if DryRun {
+	if r.dryRun {
 		logrus.WithField("stack", stack.Name).Info("skipping stack deletion")
 		return nil
 	}
 
-	logrus.WithField("stack", stack.Name).Info("skipping stack deletion")
+	hasOwnership, err := r.hasOwnership(stack)
+	if err != nil {
+		return err
+	}
+
+	if !hasOwnership {
+		logrus.WithField("stack", stack.Name).Info("no ownerhsip")
+		return nil
+	}
 
 	input := &cloudformation.DeleteStackInput{
 		StackName: aws.String(stack.Name),
 	}
 
-	if _, err := Cloudformation.DeleteStack(input); err != nil {
+	if _, err := r.cf.DeleteStack(input); err != nil {
 		return err
 	}
 
@@ -228,7 +346,7 @@ func (r *ReconcileStack) deleteStack(stack *cloudformationv1alpha1.Stack) error 
 }
 
 func (r *ReconcileStack) getStack(stack *cloudformationv1alpha1.Stack) (*cloudformation.Stack, error) {
-	resp, err := Cloudformation.DescribeStacks(&cloudformation.DescribeStacksInput{
+	resp, err := r.cf.DescribeStacks(&cloudformation.DescribeStacksInput{
 		StackName: aws.String(stack.Name),
 	})
 	if err != nil {
@@ -271,7 +389,7 @@ func (r *ReconcileStack) hasOwnership(stack *cloudformationv1alpha1.Stack) (bool
 	}
 
 	for _, tag := range cfs.Tags {
-		if aws.StringValue(tag.Key) == ownerTagKey && aws.StringValue(tag.Value) == ownerTagValue {
+		if aws.StringValue(tag.Key) == controllerKey && aws.StringValue(tag.Value) == controllerValue {
 			return true, nil
 		}
 	}
@@ -339,7 +457,7 @@ func (r *ReconcileStack) waitWhile(stack *cloudformationv1alpha1.Stack, status s
 }
 
 // stackParameters converts the parameters field on a Stack resource to CloudFormation Parameters.
-func stackParameters(stack *cloudformationv1alpha1.Stack) []*cloudformation.Parameter {
+func (r *ReconcileStack) stackParameters(stack *cloudformationv1alpha1.Stack) []*cloudformation.Parameter {
 	params := []*cloudformation.Parameter{}
 	for k, v := range stack.Spec.Parameters {
 		params = append(params, &cloudformation.Parameter{
@@ -350,23 +468,49 @@ func stackParameters(stack *cloudformationv1alpha1.Stack) []*cloudformation.Para
 	return params
 }
 
+func (r *ReconcileStack) getObjectReference(owner metav1.Object) (types.UID, error) {
+	ro, ok := owner.(runtime.Object)
+	if !ok {
+		return "", fmt.Errorf("%T is not a runtime.Object, cannot call SetControllerReference", owner)
+	}
+
+	gvk, err := apiutil.GVKForObject(ro, r.scheme)
+	if err != nil {
+		return "", err
+	}
+
+	ref := *metav1.NewControllerRef(owner, schema.GroupVersionKind{Group: gvk.Group, Version: gvk.Version, Kind: gvk.Kind})
+	return ref.UID, nil
+}
+
 // stackTags converts the tags field on a Stack resource to CloudFormation Tags.
 // Furthermore, it adds a tag for marking ownership as well as any tags given by defaultTags.
-func stackTags(stack *cloudformationv1alpha1.Stack, defaultTags map[string]string) []*cloudformation.Tag {
-	// ownership tag
+func (r *ReconcileStack) stackTags(stack *cloudformationv1alpha1.Stack) ([]*cloudformation.Tag, error) {
+	ref, err := r.getObjectReference(stack)
+	if err != nil {
+		return nil, err
+	}
+
+	// ownership tags
 	tags := []*cloudformation.Tag{
 		{
-			Key:   aws.String(ownerTagKey),
-			Value: aws.String(ownerTagValue),
+			Key:   aws.String(controllerKey),
+			Value: aws.String(controllerValue),
+		},
+		{
+			Key:   aws.String(ownerKey),
+			Value: aws.String(string(ref)),
 		},
 	}
+
 	// default tags
-	for k, v := range defaultTags {
+	for k, v := range r.defaultTags {
 		tags = append(tags, &cloudformation.Tag{
 			Key:   aws.String(k),
 			Value: aws.String(v),
 		})
 	}
+
 	// tags specified on the Stack resource
 	for k, v := range stack.Spec.Tags {
 		tags = append(tags, &cloudformation.Tag{
@@ -374,5 +518,50 @@ func stackTags(stack *cloudformationv1alpha1.Stack, defaultTags map[string]strin
 			Value: aws.String(v),
 		})
 	}
-	return tags
+
+	return tags, nil
+}
+
+func (r *ReconcileStack) finalizeStacks(reqLogger logr.Logger, stack *cloudformationv1alpha1.Stack) error {
+	// TODO(user): Add the cleanup steps that the operator
+	// needs to do before the CR can be deleted. Examples
+	// of finalizers include performing backups and deleting
+	// resources that are not owned by this CR, like a PVC.
+	if err := r.deleteStack(stack); err != nil {
+		return err
+	}
+
+	reqLogger.Info("Successfully finalized stacks")
+	return nil
+}
+
+func (r *ReconcileStack) addFinalizer(reqLogger logr.Logger, m *cloudformationv1alpha1.Stack) error {
+	reqLogger.Info("Adding Finalizer for the Memcached")
+	m.SetFinalizers(append(m.GetFinalizers(), stacksFinalizer))
+
+	// Update CR
+	err := r.client.Update(context.TODO(), m)
+	if err != nil {
+		reqLogger.Error(err, "Failed to update Memcached with finalizer")
+		return err
+	}
+	return nil
+}
+
+func contains(list []string, s string) bool {
+	for _, v := range list {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}
+
+func remove(list []string, s string) []string {
+	for i, v := range list {
+		if v == s {
+			list = append(list[:i], list[i+1:]...)
+		}
+	}
+	return list
 }

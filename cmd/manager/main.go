@@ -7,19 +7,17 @@ import (
 	"os"
 	"runtime"
 
-	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
+	"github.com/spf13/pflag"
+
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 
-	"github.com/linki/cloudformation-operator/pkg/apis"
-	"github.com/linki/cloudformation-operator/pkg/controller"
-	"github.com/linki/cloudformation-operator/pkg/controller/stack"
-
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/cloudformation"
-	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
@@ -27,13 +25,10 @@ import (
 	"github.com/operator-framework/operator-sdk/pkg/metrics"
 	"github.com/operator-framework/operator-sdk/pkg/restmapper"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
-	"github.com/spf13/pflag"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
+
+	"github.com/linki/cloudformation-operator/pkg/apis"
+	"github.com/linki/cloudformation-operator/pkg/controller"
+	"github.com/linki/cloudformation-operator/pkg/controller/stack"
 )
 
 // Change below variables to serve metrics on different host or port.
@@ -45,13 +40,6 @@ var (
 var log = logf.Log.WithName("cmd")
 
 var (
-	// namespace    string
-	region       string
-	assumeRole   string
-	tags         = map[string]string{}
-	capabilities = []string{}
-	dryRun       bool
-	// debug        bool
 	version = "0.6.0+git"
 )
 
@@ -70,18 +58,10 @@ func main() {
 	// controller-runtime)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 
-	// pflag.StringVar(&namespace, "namespace", "default", "Dry run")
-	pflag.StringVar(&region, "region", "eu-central-1", "Dry run")
-	pflag.StringVar(&assumeRole, "assume-role", "", "Dry run")
-	pflag.StringToStringVar(&tags, "tag", map[string]string{}, "Dry run")
-	pflag.StringSliceVar(&capabilities, "capability", []string{}, "Dry run")
-	pflag.BoolVar(&dryRun, "dry-run", true, "Dry run")
-	// pflag.BoolVar(&debug, "debug", false, "Dry run")
+	// Flags added for this operator
+	pflag.CommandLine.AddFlagSet(stack.StackFlagSet)
 
 	pflag.Parse()
-
-	stack.Tags = tags
-	stack.Capabilities = capabilities
 
 	// Use a zap logr.Logger implementation. If none of the zap
 	// flags are configured (or if the zap flag set is not being
@@ -94,26 +74,6 @@ func main() {
 	logf.SetLogger(zap.Logger())
 
 	printVersion()
-
-	//
-	var client cloudformationiface.CloudFormationAPI
-	sess := session.Must(session.NewSession())
-	log.Info(assumeRole)
-	if assumeRole != "" {
-		log.Info("run assume")
-		creds := stscreds.NewCredentials(sess, assumeRole)
-		client = cloudformation.New(sess, &aws.Config{
-			Credentials: creds,
-			Region:      aws.String(region),
-		})
-	} else {
-		client = cloudformation.New(sess, &aws.Config{
-			Region: aws.String(region),
-		})
-	}
-	//
-	stack.Cloudformation = client
-	stack.DryRun = dryRun
 
 	namespace, err := k8sutil.GetWatchNamespace()
 	if err != nil {
@@ -129,6 +89,7 @@ func main() {
 	}
 
 	ctx := context.TODO()
+
 	// Become the leader before proceeding
 	err = leader.Become(ctx, "cloudformation-operator-lock")
 	if err != nil {
