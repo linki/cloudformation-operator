@@ -6,16 +6,28 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: cloudformation-operator
+      name: cloudformation-operator
   template:
     metadata:
       labels:
-        app: cloudformation-operator
+        name: cloudformation-operator
     spec:
+      serviceAccountName: cloudformation-operator
       containers:
-      - name: cloudformation-operator
-        image: quay.io/linki/cloudformation-operator:v0.4.0
-        command:
-        - cloudformation-operator
-        args:
-        - --region=eu-central-1
+        - name: cloudformation-operator
+          image: quay.io/linki/cloudformation-operator:v0.6.0
+          command:
+          - cloudformation-operator
+          args:
+          - --region=eu-central-1
+          env:
+          - name: WATCH_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: OPERATOR_NAME
+            value: cloudformation-operator
