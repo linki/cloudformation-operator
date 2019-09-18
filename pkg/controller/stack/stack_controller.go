@@ -175,15 +175,15 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			reqLogger.Info("Memcached resource not found. Ignoring since object must be deleted")
+			reqLogger.Info("Stack resource not found. Ignoring since object must be deleted")
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
-		reqLogger.Error(err, "Failed to get Memcached")
+		reqLogger.Error(err, "Failed to get Stack")
 		return reconcile.Result{}, err
 	}
 
-	// Check if the Memcached instance is marked to be deleted, which is
+	// Check if the Stack instance is marked to be deleted, which is
 	// indicated by the deletion timestamp being set.
 	isStackMarkedToBeDeleted := instance.GetDeletionTimestamp() != nil
 	if isStackMarkedToBeDeleted {
@@ -536,13 +536,13 @@ func (r *ReconcileStack) finalizeStacks(reqLogger logr.Logger, stack *cloudforma
 }
 
 func (r *ReconcileStack) addFinalizer(reqLogger logr.Logger, m *cloudformationv1alpha1.Stack) error {
-	reqLogger.Info("Adding Finalizer for the Memcached")
+	reqLogger.Info("Adding Finalizer for the Stack")
 	m.SetFinalizers(append(m.GetFinalizers(), stacksFinalizer))
 
 	// Update CR
 	err := r.client.Update(context.TODO(), m)
 	if err != nil {
-		reqLogger.Error(err, "Failed to update Memcached with finalizer")
+		reqLogger.Error(err, "Failed to update Stack with finalizer")
 		return err
 	}
 	return nil
