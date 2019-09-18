@@ -15,19 +15,19 @@ spec:
       serviceAccountName: cloudformation-operator
       containers:
         - name: cloudformation-operator
-          # Replace this with the built image name
-          image: REPLACE_IMAGE
+          image: quay.io/linki/cloudformation-operator:v0.6.0
           command:
           - cloudformation-operator
-          imagePullPolicy: Always
+          args:
+          - --region=eu-central-1
           env:
-            - name: WATCH_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: OPERATOR_NAME
-              value: "cloudformation-operator"
+          - name: WATCH_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: OPERATOR_NAME
+            value: cloudformation-operator

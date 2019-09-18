@@ -55,7 +55,7 @@ func init() {
 	StackFlagSet.String("assume-role", "", "Assume AWS role when defined. Useful for stacks in another AWS account. Specify the full ARN, e.g. `arn:aws:iam::123456789:role/cloudformation-operator`")
 	StackFlagSet.StringToString("tag", map[string]string{}, "Tags to apply to all Stacks by default. Specify multiple times for multiple tags.")
 	StackFlagSet.StringSlice("capability", []string{}, "The AWS CloudFormation capability to enable")
-	StackFlagSet.Bool("dry-run", true, "If true, don't actually do anything.")
+	StackFlagSet.Bool("dry-run", false, "If true, don't actually do anything.")
 }
 
 var log = logf.Log.WithName("controller_stack")
