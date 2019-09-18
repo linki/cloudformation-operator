@@ -8,7 +8,7 @@ WORKDIR /go/src/github.com/linki/cloudformation-operator
 COPY . .
 RUN go build -o /bin/cloudformation-operator -v \
   -ldflags "-X main.version=$(git describe --tags --always --dirty) -w -s" \
-  ./cmd/cloudformation-operator
+  ./cmd/manager
 
 # final image
 FROM alpine:3.10.2
