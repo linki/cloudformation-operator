@@ -59,3 +59,24 @@ rules:
   - '*'
   verbs:
   - '*'
+
+---
+
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: cloudformation-operator
+subjects:
+- kind: ServiceAccount
+  name: cloudformation-operator
+roleRef:
+  kind: Role
+  name: cloudformation-operator
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cloudformation-operator

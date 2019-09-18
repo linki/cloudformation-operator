@@ -290,13 +290,12 @@ Check your CloudFormation console once more and validate that your stack as well
 
 Argument | Environment variable | Default value | Description
 ---------|----------------------|---------------|------------
-assume-role | AWS_ASSUME_ROLE | | Assume AWS role when defined. Useful for stacks in another AWS account. Specify the full ARN, e.g. `arn:aws:iam::123456789:role/cloudformation-operator`
-capability | AWS_CAPABILITIES | | Enable specified capabilities for all stacks managed by the operator instance. Current parameter can be used multiple times. For example: `--capability CAPABILITY_NAMED_IAM --capability CAPABILITY_IAM`. Or with a line break when specifying as an environment variable: `AWS_CAPABILITIES=CAPABILITY_IAM$'\n'CAPABILITY_NAMED_IAM`
-debug | DEBUG | | Enable debug logging.
-dry-run | DRY_RUN | | If true, don't actually do anything.
-tag ... | AWS_TAGS | | Default tags which should be applied for all stacks. The format is `--tag=foo=bar --tag=wambo=baz` on the command line or with a line break when specifying as an env var. (e.g. in zsh: `AWS_TAGS="foo=bar"$'\n'"wambo=baz"`)
+assume-role | | | Assume AWS role when defined. Useful for stacks in another AWS account. Specify the full ARN, e.g. `arn:aws:iam::123456789:role/cloudformation-operator`
+capability | | | Enable specified capabilities for all stacks managed by the operator instance. Current parameter can be used multiple times. For example: `--capability CAPABILITY_NAMED_IAM --capability CAPABILITY_IAM`. Or with a line break when specifying as an environment variable: `AWS_CAPABILITIES=CAPABILITY_IAM$'\n'CAPABILITY_NAMED_IAM`
+dry-run | | | If true, don't actually do anything.
+tag ... | | | Default tags which should be applied for all stacks. The format is `--tag=foo=bar --tag=wambo=baz` on the command line or with a line break when specifying as an env var. (e.g. in zsh: `AWS_TAGS="foo=bar"$'\n'"wambo=baz"`)
 namespace | WATCH_NAMESPACE | default | The Kubernetes namespace to watch
-region | AWS_REGION | | The AWS region to use
+region | | | The AWS region to use
 
 # Cleanup
 
@@ -314,26 +313,24 @@ $ kubectl delete -f deploy/operator.yaml
 This project uses the [operator sdk](https://github.com/operator-framework/operator-sdk).
 
 ```console
-$ dep ensure -vendor-only
-$ go build -o ./tmp/_output/bin/cloudformation-operator ./cmd/cloudformation-operator
-$ KUBERNETES_CONFIG=~/.kube/config ./tmp/_output/bin/cloudformation-operator --region eu-central-1
-$ # if you're using the operator-sdk helper use env vars to configure the flags.
-$ AWS_REGION=eu-central-1 operator-sdk up local
+$ go build -o ./tmp/_output/bin/cloudformation-operator ./cmd/manager
+  $ WATCH_NAMESPACE=default KUBERNETES_CONFIG=~/.kube/config ./tmp/_output/bin/cloudformation-operator --region eu-central-1
+$ # if you're using the operator-sdk helper use `operator-flags` to configure the flags.
+$ operator-sdk up local --operator-flags="--region=eu-central-1"
 ```
 
 ## Build the docker image
 
 ```console
-$ operator-sdk build quay.io/linki/cloudformation-operator:v0.4.0
-$ docker push quay.io/linki/cloudformation-operator:v0.4.0
+$ operator-sdk build quay.io/linki/cloudformation-operator:v0.6.0
+$ docker push quay.io/linki/cloudformation-operator:v0.6.0
 $ # or use the previously used Dockerfile (not the one from operator-sdk)
-$ docker build -t quay.io/linki/cloudformation-operator:v0.4.0 .
+$ docker build -t quay.io/linki/cloudformation-operator:v0.6.0 .
 ```
 
 ## Test it locally
 
-The `operator-sdk` doesn't allow to pass in flags, so instead use the environment variables
-`WATCH_NAMESPACE`, `AWS_REGION` (and/or `AWS_PROFILE`), `DRY_RUN`, and `DEBUG`.
+You can use `--operator-flags` to pass in flags using the operator-sdk.
 
 Assuming you are using minikube:
 
@@ -342,10 +339,10 @@ $ minikube start # you will be have a kubeconfig read to use by cloudformation o
 $ export AWS_PROFILE=my_profile # setup your aws config
 $ cd $GOPATH/src/github.com/linki/cloudformation-operator
 $ # run cloudformation operator based on previous settings and env vars
-$ WATCH_NAMESPACE=staging DRY_RUN=true DEBUG=true AWS_REGION=eu-central-1 operator-sdk up local
-INFO[0000] Go Version: go1.10.1
+$ WATCH_NAMESPACE=staging operator-sdk up local --operator-flags="--dry-run=true --region=eu-central-1"
+INFO[0000] Go Version: go1.13.0
 INFO[0000] Go OS/Arch: darwin/amd64
-INFO[0000] operator-sdk Version: 0.0.5+git
-INFO[0000] cloudformation-operator Version: 0.4.0+git
+INFO[0000] operator-sdk Version: v0.10.0
+INFO[0000] cloudformation-operator Version: 0.6.0+git
 INFO[0000] starting stacks controller
 ```
