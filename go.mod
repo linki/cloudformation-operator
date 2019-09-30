@@ -22,7 +22,7 @@ require (
 	k8s.io/client-go v11.0.0+incompatible
 	k8s.io/kube-openapi v0.0.0-20190603182131-db7b694dc208
 	sigs.k8s.io/controller-runtime v0.1.12
-	sigs.k8s.io/controller-tools v0.1.10
+	sigs.k8s.io/controller-tools v0.2.1
 )
 
 // Pinned to kubernetes-1.13.4
