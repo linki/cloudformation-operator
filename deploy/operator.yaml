@@ -15,7 +15,7 @@ spec:
       serviceAccountName: cloudformation-operator
       containers:
         - name: cloudformation-operator
-          image: quay.io/linki/cloudformation-operator:v0.6.0
+          image: quay.io/linki/cloudformation-operator:v0.7.0
           command:
           - cloudformation-operator
           args:
