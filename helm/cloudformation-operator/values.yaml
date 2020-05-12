@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 image:
   repository: quay.io/linki/cloudformation-operator
-  tag: v0.6.0
+  tag: v0.7.0
   pullPolicy: IfNotPresent
 
 replicas: 1
