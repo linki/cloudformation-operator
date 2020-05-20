@@ -16,7 +16,7 @@ require (
 	golang.org/x/sys v0.0.0-20190909082730-f460065e899a // indirect
 	golang.org/x/tools v0.0.0-20190910044552-dd2b5c81c578 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
-	k8s.io/api v0.0.0-20190612125737-db0771252981
+	k8s.io/api v0.18.3
 	k8s.io/apimachinery v0.0.0-20190612125636-6a5db36e93ad
 	k8s.io/client-go v11.0.0+incompatible
 	k8s.io/kube-openapi v0.0.0-20190603182131-db7b694dc208
