@@ -1,7 +1,7 @@
 module github.com/linki/cloudformation-operator
 
 require (
-	github.com/aws/aws-sdk-go v1.30.19
+	github.com/aws/aws-sdk-go v1.31.7
 	github.com/go-logr/logr v0.1.0
 	github.com/go-openapi/spec v0.19.7
 	github.com/golang/protobuf v1.3.2 // indirect
@@ -10,9 +10,7 @@ require (
 	github.com/operator-framework/operator-sdk v0.17.0
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.4.0 // indirect
 	golang.org/x/crypto v0.0.0-20190909091759-094676da4a83 // indirect
-	golang.org/x/net v0.0.0-20190909003024-a7b16738d86b // indirect
 	golang.org/x/sys v0.0.0-20190909082730-f460065e899a // indirect
 	golang.org/x/tools v0.0.0-20190910044552-dd2b5c81c578 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
