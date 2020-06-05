@@ -41,10 +41,6 @@ spec:
 {{- if .Values.capability.enabled }}
           - --capability CAPABILITY_IAM
         {{- end }}
-{{- if .Values.affinity }}
-          affinity:
-{{ toYaml .Values.affinity | indent 12 }}
-          {{- end }}
           env:
           - name: WATCH_NAMESPACE
             valueFrom:
@@ -73,6 +69,10 @@ spec:
 {{- if .Values.extraVolumes }}
       volumes:
 {{ toYaml .Values.extraVolumes | indent 8 }}
+{{- end }}
+{{- if .Values.affinity }}
+      affinity:
+{{ toYaml .Values.affinity | indent 8 }}
 {{- end }}
 {{- if .Values.tolerations }}
       tolerations:
