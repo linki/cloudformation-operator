@@ -66,10 +66,6 @@ spec:
           resources:
 {{ toYaml .Values.resources | indent 12 }}
           {{- end }}
-          {{- if .Values.tolerations }}
-          tolerations:
-{{ toYaml .Values.tolerations | indent 12 }}
-          {{- end }}
 {{- if .Values.extraVolumeMounts }}
           volumeMounts:
 {{ toYaml .Values.extraVolumeMounts | indent 12 }}
@@ -77,4 +73,8 @@ spec:
 {{- if .Values.extraVolumes }}
       volumes:
 {{ toYaml .Values.extraVolumes | indent 8 }}
+{{- end }}
+{{- if .Values.tolerations }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 8 }}
 {{- end }}
