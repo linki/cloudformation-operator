@@ -1,7 +1,7 @@
 module github.com/linki/cloudformation-operator
 
 require (
-	github.com/aws/aws-sdk-go v1.31.7
+	github.com/aws/aws-sdk-go v1.32.13
 	github.com/go-logr/logr v0.1.0
 	github.com/go-openapi/spec v0.19.8
 	github.com/golang/protobuf v1.3.2 // indirect
