@@ -1,0 +1,19 @@
+version: 2
+updates:
+- package-ecosystem: gomod
+  directory: "/"
+  schedule:
+    interval: monthly
+    time: "07:00"
+  open-pull-requests-limit: 10
+  ignore:
+  - dependency-name: github.com/aws/aws-sdk-go
+    versions:
+    - "> 1.23.21"
+    - "< 1.24"
+- package-ecosystem: docker
+  directory: "/"
+  schedule:
+    interval: monthly
+    time: "07:00"
+  open-pull-requests-limit: 10
