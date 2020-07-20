@@ -12,10 +12,5 @@ go:
 env:
 - GO111MODULE=on
 
-install:
-- go get github.com/mattn/goveralls
-- go get github.com/lawrencewoodman/roveralls
-
 script:
-- roveralls
-- goveralls -coverprofile=roveralls.coverprofile -service=travis-ci
+- go build cmd/manager/main.go
