@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/jpillora/backoff"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 
@@ -283,7 +284,7 @@ func (r *ReconcileStack) updateStack(stack *cloudformationv1alpha1.Stack) error 
 	}
 
 	if !hasOwnership {
-		logrus.WithField("stack", stack.Name).Info("no ownerhsip")
+		logrus.WithField("stack", stack.Name).Info("no ownership")
 		return nil
 	}
 
@@ -291,6 +292,15 @@ func (r *ReconcileStack) updateStack(stack *cloudformationv1alpha1.Stack) error 
 	if err != nil {
 		logrus.WithField("stack", stack.Name).Error("error compiling tags")
 		return err
+	}
+
+	// Skip update if the stack remains in CREATE_IN_PROGRESS
+	createInProgress, err := r.checkStackStatus(stack, cloudformation.StackStatusCreateInProgress)
+	if err != nil {
+		return err
+	} else if createInProgress {
+		logrus.WithField("stack", stack.Name).Info("update skipped, stack status 'Create In Progress'")
+		return nil
 	}
 
 	input := &cloudformation.UpdateStackInput{
@@ -346,20 +356,34 @@ func (r *ReconcileStack) deleteStack(stack *cloudformationv1alpha1.Stack) error 
 }
 
 func (r *ReconcileStack) getStack(stack *cloudformationv1alpha1.Stack) (*cloudformation.Stack, error) {
-	resp, err := r.cf.DescribeStacks(&cloudformation.DescribeStacksInput{
-		StackName: aws.String(stack.Name),
-	})
-	if err != nil {
-		if strings.Contains(err.Error(), "does not exist") {
-			return nil, ErrStackNotFound
-		}
-		return nil, err
-	}
-	if len(resp.Stacks) != 1 {
-		return nil, ErrStackNotFound
+	b := &backoff.Backoff{
+		Min:    1 * time.Second,
+		Max:    2 * time.Minute,
+		Factor: 3,
+		Jitter: true, // Use jitter as many of these requests happen
 	}
 
-	return resp.Stacks[0], nil
+	for {
+		resp, err := r.cf.DescribeStacks(&cloudformation.DescribeStacksInput{
+			StackName: aws.String(stack.Name),
+		})
+		if err != nil {
+			if strings.Contains(err.Error(), "does not exist") {
+				return nil, ErrStackNotFound
+			}
+			if strings.Contains(err.Error(), "Rate exceeded") {
+				logrus.WithField("stack", stack.Name).Error("Rate limited by AWS, sleep and retry initiated")
+				time.Sleep(b.Duration()) // Throttled by AWS, sleep using backoff duration
+				continue
+			}
+			return nil, err
+		}
+		if len(resp.Stacks) != 1 {
+			return nil, ErrStackNotFound
+		}
+
+		return resp.Stacks[0], nil
+	}
 }
 
 func (r *ReconcileStack) stackExists(stack *cloudformationv1alpha1.Stack) (bool, error) {
@@ -372,6 +396,28 @@ func (r *ReconcileStack) stackExists(stack *cloudformationv1alpha1.Stack) (bool,
 	}
 
 	return true, nil
+}
+
+func (r *ReconcileStack) checkStackStatus(stack *cloudformationv1alpha1.Stack, desiredStatus string) (bool, error) {
+	cfs, err := r.getStack(stack)
+	if err != nil {
+		if err == ErrStackNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	currentStatus := aws.StringValue(cfs.StackStatus)
+
+	logrus.WithFields(logrus.Fields{
+		"stack":  stack.Name,
+		"status": currentStatus,
+	}).Debug("checking stack status")
+
+	if currentStatus == desiredStatus {
+		return true, nil
+	}
+
+	return false, nil
 }
 
 func (r *ReconcileStack) hasOwnership(stack *cloudformationv1alpha1.Stack) (bool, error) {
@@ -432,6 +478,13 @@ func (r *ReconcileStack) updateStackStatus(stack *cloudformationv1alpha1.Stack) 
 }
 
 func (r *ReconcileStack) waitWhile(stack *cloudformationv1alpha1.Stack, status string) error {
+	b := &backoff.Backoff{
+		Min:    1 * time.Second,
+		Max:    1 * time.Minute,
+		Factor: 3,
+		Jitter: true, // Use jitter as many of these requests happen
+	}
+
 	for {
 		cfs, err := r.getStack(stack)
 		if err != nil {
@@ -448,7 +501,7 @@ func (r *ReconcileStack) waitWhile(stack *cloudformationv1alpha1.Stack, status s
 		}).Debug("waiting for stack")
 
 		if current == status {
-			time.Sleep(time.Second)
+			time.Sleep(b.Duration()) // Sleep using backoff duration
 			continue
 		}
 

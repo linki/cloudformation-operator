@@ -5,6 +5,7 @@ require (
 	github.com/go-logr/logr v0.1.0
 	github.com/go-openapi/spec v0.19.9
 	github.com/golang/protobuf v1.3.2 // indirect
+	github.com/jpillora/backoff v1.0.0
 	github.com/onsi/ginkgo v1.10.1 // indirect
 	github.com/onsi/gomega v1.7.0 // indirect
 	github.com/operator-framework/operator-sdk v0.19.2
