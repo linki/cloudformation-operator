@@ -326,14 +326,19 @@ func (r *StackReconciler) updateStackStatus(stack *cloudformationv1alpha1.Stack)
 	}
 
 	stackID := aws.StringValue(cfs.StackId)
+
 	outputs := map[string]string{}
-	for _, output := range cfs.Outputs {
-		outputs[aws.StringValue(output.OutputKey)] = aws.StringValue(output.OutputValue)
+	if cfs.Outputs != nil && len(cfs.Outputs) > 0 {
+		for _, output := range cfs.Outputs {
+			outputs[aws.StringValue(output.OutputKey)] = aws.StringValue(output.OutputValue)
+		}
 	}
 
 	if stackID != stack.Status.StackID || !reflect.DeepEqual(outputs, stack.Status.Outputs) {
 		stack.Status.StackID = stackID
-		stack.Status.Outputs = outputs
+		if len(outputs) > 0 {
+			stack.Status.Outputs = outputs
+		}
 
 		err := r.Client.Status().Update(context.TODO(), stack)
 		if err != nil {
@@ -378,11 +383,13 @@ func (r *StackReconciler) waitWhile(stack *cloudformationv1alpha1.Stack, status 
 // stackParameters converts the parameters field on a Stack resource to CloudFormation Parameters.
 func (r *StackReconciler) stackParameters(stack *cloudformationv1alpha1.Stack) []*cloudformation.Parameter {
 	var params []*cloudformation.Parameter
-	for k, v := range stack.Spec.Parameters {
-		params = append(params, &cloudformation.Parameter{
-			ParameterKey:   aws.String(k),
-			ParameterValue: aws.String(v),
-		})
+	if stack.Spec.Parameters != nil {
+		for k, v := range stack.Spec.Parameters {
+			params = append(params, &cloudformation.Parameter{
+				ParameterKey:   aws.String(k),
+				ParameterValue: aws.String(v),
+			})
+		}
 	}
 	return params
 }
@@ -431,11 +438,13 @@ func (r *StackReconciler) stackTags(stack *cloudformationv1alpha1.Stack) ([]*clo
 	}
 
 	// tags specified on the Stack resource
-	for k, v := range stack.Spec.Tags {
-		tags = append(tags, &cloudformation.Tag{
-			Key:   aws.String(k),
-			Value: aws.String(v),
-		})
+	if stack.Spec.Tags != nil {
+		for k, v := range stack.Spec.Tags {
+			tags = append(tags, &cloudformation.Tag{
+				Key:   aws.String(k),
+				Value: aws.String(v),
+			})
+		}
 	}
 
 	return tags, nil

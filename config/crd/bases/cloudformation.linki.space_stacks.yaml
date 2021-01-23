@@ -49,8 +49,6 @@ spec:
               template:
                 type: string
             required:
-            - parameters
-            - tags
             - template
             type: object
           status:
@@ -66,7 +64,6 @@ spec:
                   this file'
                 type: string
             required:
-            - outputs
             - stackID
             type: object
         type: object

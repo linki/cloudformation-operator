@@ -37,8 +37,8 @@ type StackSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of Stack. Edit Stack_types.go to remove/update
-	Parameters map[string]string `json:"parameters"`
-	Tags       map[string]string `json:"tags"`
+	Parameters map[string]string `json:"parameters,omitempty"`
+	Tags       map[string]string `json:"tags,omitempty"`
 	Template   string            `json:"template"`
 }
 
@@ -47,7 +47,7 @@ type StackStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 	StackID string            `json:"stackID"`
-	Outputs map[string]string `json:"outputs"`
+	Outputs map[string]string `json:"outputs,omitempty"`
 }
 
 // +kubebuilder:object:root=true
