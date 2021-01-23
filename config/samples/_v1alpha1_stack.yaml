@@ -1,0 +1,7 @@
+apiVersion: cloudformation.linki.space/v1alpha1
+kind: Stack
+metadata:
+  name: stack-sample
+spec:
+  # Add fields here
+  foo: bar

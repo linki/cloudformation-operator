@@ -1,22 +1,27 @@
-# builder image
-FROM golang:1.13-alpine3.10 as builder
+# Build the manager binary
+FROM golang:1.15 as builder
 
-ENV CGO_ENABLED 0
-ENV GO111MODULE on
-RUN apk --no-cache add git
-WORKDIR /go/src/github.com/linki/cloudformation-operator
-COPY . .
-RUN go build -o /bin/cloudformation-operator -v \
-  -ldflags "-X main.version=$(git describe --tags --always --dirty) -w -s" \
-  ./cmd/manager
+WORKDIR /workspace
+# Copy the Go Modules manifests
+COPY go.mod go.mod
+COPY go.sum go.sum
+# cache deps before building and copying source so that we don't need to re-download as much
+# and so that source changes don't invalidate our downloaded layer
+RUN go mod download
 
-# final image
-FROM alpine:3.12.0
-MAINTAINER Linki <linki+docker.com@posteo.de>
+# Copy the go source
+COPY main.go main.go
+COPY api/ api/
+COPY controllers/ controllers/
 
-RUN apk --no-cache add ca-certificates
-RUN addgroup -S app && adduser -S -g app app
-COPY --from=builder /bin/cloudformation-operator /bin/cloudformation-operator
+# Build
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o manager main.go
 
-USER app
-ENTRYPOINT ["cloudformation-operator"]
+# Use distroless as minimal base image to package the manager binary
+# Refer to https://github.com/GoogleContainerTools/distroless for more details
+FROM gcr.io/distroless/static:nonroot
+WORKDIR /
+COPY --from=builder /workspace/manager .
+USER 65532:65532
+
+ENTRYPOINT ["/manager"]

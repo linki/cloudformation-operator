@@ -11,14 +11,12 @@ A Kubernetes operator for managing CloudFormation stacks via `kubectl` and a cus
 
 # Deploy to a cluster
 
-You need API access to a cluster running at least Kubernetes v1.7.
+You need API access to a cluster running at least Kubernetes v1.11.3+ (v1.16.0+ if using apiextensions.k8s.io/v1 CRDs).
 
 Start the CloudFormation operator in your cluster by using the provided manifests:
 
 ```console
-$ kubectl create -f deploy/rbac.yaml
-$ kubectl create -f deploy/crd.yaml
-$ kubectl create -f deploy/operator.yaml
+$ make deploy IMG=quay.io/linki/cloudformation-operator:v0.9.0
 ```
 
 Modify the `region` flag to match your cluster's.
@@ -81,7 +79,7 @@ The `spec` section describes an attribute called `template` which contains a reg
 Go ahead and submit the stack definition to your cluster:
 
 ```console
-$ kubectl apply -f examples/cfs-my-bucket-v1.yaml
+$ kubectl apply -f config/samples/cfs-my-bucket-v1.yaml
 stack "my-bucket" created
 $ kubectl get stacks
 NAME        AGE
@@ -132,7 +130,7 @@ spec:
 As with most Kubernetes resources you can update your `Stack` resource by applying a changed manifest to your Kubernetes cluster or by using `kubectl edit stack my-stack`.
 
 ```console
-$ kubectl apply -f examples/cfs-my-bucket-v2.yaml
+$ kubectl apply -f config/samples/cfs-my-bucket-v2.yaml
 stack "my-bucket" configured
 ```
 
@@ -205,7 +203,7 @@ spec:
 and apply it to your cluster:
 
 ```console
-$ kubectl apply -f examples/cfs-my-bucket-v3.yaml
+$ kubectl apply -f config/samples/cfs-my-bucket-v3.yaml
 stack "my-bucket" configured
 ```
 
@@ -252,7 +250,7 @@ spec:
 Apply the change to our cluster and wait until the operator has successfully updated the CloudFormation stack.
 
 ```console
-$ kubectl apply -f examples/cfs-my-bucket-v4.yaml
+$ kubectl apply -f config/samples/cfs-my-bucket-v4.yaml
 stack "my-bucket" configured
 ```
 
@@ -302,10 +300,7 @@ region | | | The AWS region to use
 Clean up the resources:
 
 ```console
-$ kubectl delete -f examples/
-$ kubectl delete -f deploy/rbac.yaml
-$ kubectl delete -f deploy/crd.yaml
-$ kubectl delete -f deploy/operator.yaml
+$ make undeploy
 ```
 
 # Build and run locally
@@ -313,24 +308,20 @@ $ kubectl delete -f deploy/operator.yaml
 This project uses the [operator sdk](https://github.com/operator-framework/operator-sdk).
 
 ```console
-$ go build -o ./tmp/_output/bin/cloudformation-operator ./cmd/manager
-  $ WATCH_NAMESPACE=default KUBERNETES_CONFIG=~/.kube/config ./tmp/_output/bin/cloudformation-operator --region eu-central-1
-$ # if you're using the operator-sdk helper use `operator-flags` to configure the flags.
-$ operator-sdk up local --operator-flags="--region=eu-central-1"
+$ make
+$ WATCH_NAMESPACE=default KUBERNETES_CONFIG=~/.kube/config make run OPERATOR_FLAGS="--region eu-central-1"
 ```
 
 ## Build the docker image
 
 ```console
-$ operator-sdk build quay.io/linki/cloudformation-operator:v0.6.0
-$ docker push quay.io/linki/cloudformation-operator:v0.6.0
-$ # or use the previously used Dockerfile (not the one from operator-sdk)
-$ docker build -t quay.io/linki/cloudformation-operator:v0.6.0 .
+$ make docker-build quay.io/linki/cloudformation-operator:v0.9.0
+$ make docker-push quay.io/linki/cloudformation-operator:v0.9.0
 ```
 
 ## Test it locally
 
-You can use `--operator-flags` to pass in flags using the operator-sdk.
+You can use `OPERATOR_FLAGS` to pass in flags using the operator-sdk.
 
 Assuming you are using minikube:
 
@@ -339,10 +330,13 @@ $ minikube start # you will be have a kubeconfig read to use by cloudformation o
 $ export AWS_PROFILE=my_profile # setup your aws config
 $ cd $GOPATH/src/github.com/linki/cloudformation-operator
 $ # run cloudformation operator based on previous settings and env vars
-$ WATCH_NAMESPACE=staging operator-sdk up local --operator-flags="--dry-run=true --region=eu-central-1"
-INFO[0000] Go Version: go1.13.0
-INFO[0000] Go OS/Arch: darwin/amd64
-INFO[0000] operator-sdk Version: v0.10.0
-INFO[0000] cloudformation-operator Version: 0.6.0+git
-INFO[0000] starting stacks controller
+$ WATCH_NAMESPACE=staging make run OPERATOR_FLAGS="--dry-run=true --region=eu-central-1"
+I0122 16:31:14.509064  195514 request.go:645] Throttling request took 1.027790903s, request: GET:https://api.crc.testing:6443/apis/template.openshift.io/v1?timeout=32s
+2021-01-22T16:31:15.863-0500    INFO    controller-runtime.metrics      metrics server is starting to listen    {"addr": ":8080"}
+2021-01-22T16:31:15.864-0500    INFO    setup   
+2021-01-22T16:31:15.864-0500    INFO    setup   starting manager
+2021-01-22T16:31:15.864-0500    INFO    controller-runtime.manager      starting metrics server {"path": "/metrics"}
+2021-01-22T16:31:15.864-0500    INFO    controller-runtime.manager.controller.stack     Starting EventSource    {"reconciler group": "cloudformation.linki.space", "reconciler kind": "Stack", "source": "kind source: /, Kind="}
+2021-01-22T16:31:15.965-0500    INFO    controller-runtime.manager.controller.stack     Starting Controller     {"reconciler group": "cloudformation.linki.space", "reconciler kind": "Stack"}
+2021-01-22T16:31:15.965-0500    INFO    controller-runtime.manager.controller.stack     Starting workers        {"reconciler group": "cloudformation.linki.space", "reconciler kind": "Stack", "worker count": 1}
 ```
