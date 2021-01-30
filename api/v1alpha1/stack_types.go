@@ -30,23 +30,21 @@ import (
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+// Important: Run "make" to regenerate code after modifying this file
 
-// StackSpec defines the desired state of Stack
+// Defines the desired state of Stack
 type StackSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of Stack. Edit Stack_types.go to remove/update
+	// +kubebuilder:validation:Optional
 	Parameters map[string]string `json:"parameters,omitempty"`
-	Tags       map[string]string `json:"tags,omitempty"`
-	Template   string            `json:"template"`
+	// +kubebuilder:validation:Optional
+	Tags     map[string]string `json:"tags,omitempty"`
+	Template string            `json:"template"`
 }
 
-// StackStatus defines the observed state of Stack
+// Defines the observed state of Stack
 type StackStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-	StackID string            `json:"stackID"`
+	StackID string `json:"stackID"`
+	// +kubebuilder:validation:Optional
 	Outputs map[string]string `json:"outputs,omitempty"`
 }
 

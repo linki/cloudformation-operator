@@ -39,8 +39,6 @@ spec:
               parameters:
                 additionalProperties:
                   type: string
-                description: Foo is an example field of Stack. Edit Stack_types.go
-                  to remove/update
                 type: object
               tags:
                 additionalProperties:
@@ -59,9 +57,6 @@ spec:
                   type: string
                 type: object
               stackID:
-                description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
-                  of cluster Important: Run "make" to regenerate code after modifying
-                  this file'
                 type: string
             required:
             - stackID

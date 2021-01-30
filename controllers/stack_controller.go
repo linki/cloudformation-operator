@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"strings"
 	"time"
@@ -119,8 +120,8 @@ func (r *StackReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 			// Remove stacksFinalizer. Once all finalizers have been
 			// removed, the object will be deleted.
-			instance.SetFinalizers(remove(instance.GetFinalizers(), stacksFinalizer))
-			err := r.Client.Update(context.TODO(), instance)
+			controllerutil.RemoveFinalizer(instance, stacksFinalizer)
+			err := r.Update(context.TODO(), instance)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
@@ -131,9 +132,8 @@ func (r *StackReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	// Add finalizer for this CR
 	if !contains(instance.GetFinalizers(), stacksFinalizer) {
-		if err := r.addFinalizer(r.Log, instance); err != nil {
-			return ctrl.Result{}, err
-		}
+		controllerutil.AddFinalizer(instance, stacksFinalizer)
+		r.Update(context.TODO(), instance)
 	}
 
 	exists, err := r.stackExists(instance)
@@ -340,7 +340,7 @@ func (r *StackReconciler) updateStackStatus(stack *cloudformationv1alpha1.Stack)
 			stack.Status.Outputs = outputs
 		}
 
-		err := r.Client.Status().Update(context.TODO(), stack)
+		err := r.Status().Update(context.TODO(), stack)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				// Request object not found, could have been deleted after reconcile request.
@@ -463,19 +463,6 @@ func (r *StackReconciler) finalizeStacks(reqLogger logr.Logger, stack *cloudform
 	return nil
 }
 
-func (r *StackReconciler) addFinalizer(reqLogger logr.Logger, m *cloudformationv1alpha1.Stack) error {
-	reqLogger.Info("Adding Finalizer for the Stack")
-	m.SetFinalizers(append(m.GetFinalizers(), stacksFinalizer))
-
-	// Update CR
-	err := r.Client.Update(context.TODO(), m)
-	if err != nil {
-		reqLogger.Error(err, "Failed to update Stack with finalizer")
-		return err
-	}
-	return nil
-}
-
 func contains(list []string, s string) bool {
 	for _, v := range list {
 		if v == s {
@@ -483,15 +470,6 @@ func contains(list []string, s string) bool {
 		}
 	}
 	return false
-}
-
-func remove(list []string, s string) []string {
-	for i, v := range list {
-		if v == s {
-			list = append(list[:i], list[i+1:]...)
-		}
-	}
-	return list
 }
 
 // SetupWithManager sets up the controller with the Manager.
