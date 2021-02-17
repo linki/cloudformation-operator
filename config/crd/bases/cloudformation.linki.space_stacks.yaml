@@ -34,7 +34,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: StackSpec defines the desired state of Stack
+            description: Defines the desired state of Stack
             properties:
               parameters:
                 additionalProperties:
@@ -50,7 +50,7 @@ spec:
             - template
             type: object
           status:
-            description: StackStatus defines the observed state of Stack
+            description: Defines the observed state of Stack
             properties:
               outputs:
                 additionalProperties:
