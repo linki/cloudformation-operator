@@ -1,4 +1,8 @@
 ## Append samples you want in your CSV to this file as resources ##
 resources:
-- _v1alpha1_stack.yaml
+- cfs-my-bucket-tags.yaml
+- cfs-my-bucket-v1.yaml
+- cfs-my-bucket-v2.yaml
+- cfs-my-bucket-v3.yaml
+- cfs-my-bucket-v4.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

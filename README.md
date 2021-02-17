@@ -190,6 +190,10 @@ spec:
     Parameters:
       VersioningConfiguration:
         Type: String
+        Default: none
+        AllowedValues:
+        - "Enabled"
+        - "Suspended"
 
     Resources:
       S3Bucket:
@@ -233,6 +237,10 @@ spec:
     Parameters:
       VersioningConfiguration:
         Type: String
+        Default: none
+        AllowedValues:
+        - "Enabled"
+        - "Suspended"
 
     Resources:
       S3Bucket:
@@ -245,6 +253,7 @@ spec:
     Outputs:
       BucketName:
         Value: !Ref 'S3Bucket'
+        Description: Name of the sample Amazon S3 bucket.
 ```
 
 Apply the change to our cluster and wait until the operator has successfully updated the CloudFormation stack.

@@ -12,6 +12,10 @@ spec:
     Parameters:
       VersioningConfiguration:
         Type: String
+        Default: Suspended
+        AllowedValues:
+        - Enabled
+        - Suspended
 
     Resources:
       S3Bucket:
