@@ -25,9 +25,11 @@ spec:
       containers:
       - command:
         - /manager
+        env:
+        - name: AWS_REGION
+          value: us-east-2
         args:
         - --leader-elect
-        # - --region=eu-central-1
         image: controller:latest
         name: manager
         securityContext:

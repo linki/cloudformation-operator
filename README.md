@@ -11,18 +11,19 @@ A Kubernetes operator for managing CloudFormation stacks via `kubectl` and a cus
 
 # Deploy to a cluster
 
-You need API access to a cluster running at least Kubernetes v1.11.3+ (v1.16.0+ if using apiextensions.k8s.io/v1 CRDs).
+You need API access to a cluster running at least Kubernetes v1.17.0+.
 
 Start the CloudFormation operator in your cluster by using the provided manifests:
 
 ```console
-$ make deploy IMG=quay.io/linki/cloudformation-operator:v0.9.0
+$ make deploy IMG=quay.io/cuppett/cloudformation-operator
 ```
 
 Modify the `region` flag to match your cluster's.
 
 Additionally you need to make sure that the operator Pod has enough AWS IAM permissions to create, update and delete CloudFormation stacks as well as permission to modify any resources that are part of the CloudFormation stacks you intend to deploy. In order to follow the example below it needs access to CloudFormation as well as S3.
 
+The operator will require an IAM role or user credentials. 
 Use the following Policy document as a guideline in order to follow the tutorial:
 
 ```yaml

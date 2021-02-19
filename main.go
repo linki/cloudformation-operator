@@ -25,12 +25,14 @@ SOFTWARE.
 package main
 
 import (
+	"context"
 	"flag"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/cloudformation"
-	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	cf_types "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
+
 	"github.com/spf13/pflag"
 	"os"
 
@@ -63,7 +65,7 @@ func init() {
 	// +kubebuilder:scaffold:scheme
 
 	StackFlagSet = pflag.NewFlagSet("stack", pflag.ExitOnError)
-	StackFlagSet.String("region", "eu-central-1", "The AWS region to use")
+	StackFlagSet.String("region", "", "The AWS region to use")
 	StackFlagSet.String("assume-role", "", "Assume AWS role when defined. Useful for stacks in another AWS account. Specify the full ARN, e.g. `arn:aws:iam::123456789:role/cloudformation-operator`")
 	StackFlagSet.StringToString("tag", map[string]string{}, "Tags to apply to all Stacks by default. Specify multiple times for multiple tags.")
 	StackFlagSet.StringSlice("capability", []string{}, "The AWS CloudFormation capability to enable")
@@ -126,32 +128,40 @@ func main() {
 		setupLog.Error(err, "error parsing flag")
 		os.Exit(1)
 	}
-	defaultCapabilities, err := StackFlagSet.GetStringSlice("capability")
+
+	paramStringSlice, err := StackFlagSet.GetStringSlice("capability")
 	if err != nil {
 		setupLog.Error(err, "error parsing flag")
 		os.Exit(1)
 	}
+	defaultCapabilities := make([]cf_types.Capability, len(paramStringSlice))
+	for i := range paramStringSlice {
+		defaultCapabilities[i] = cf_types.Capability(paramStringSlice[i])
+	}
+
 	dryRun, err := StackFlagSet.GetBool("dry-run")
 	if err != nil {
 		setupLog.Error(err, "error parsing flag")
 		os.Exit(1)
 	}
 
-	var client cloudformationiface.CloudFormationAPI
-	sess := session.Must(session.NewSession())
+	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(region))
+	if err != nil {
+		setupLog.Error(err, "error getting AWS config")
+		os.Exit(1)
+	}
+	creds := cfg.Credentials
+
 	setupLog.Info(assumeRole)
 	if assumeRole != "" {
 		setupLog.Info("run assume")
-		creds := stscreds.NewCredentials(sess, assumeRole)
-		client = cloudformation.New(sess, &aws.Config{
-			Credentials: creds,
-			Region:      aws.String(region),
-		})
-	} else {
-		client = cloudformation.New(sess, &aws.Config{
-			Region: aws.String(region),
-		})
+		stsClient := sts.NewFromConfig(cfg)
+		creds = stscreds.NewAssumeRoleProvider(stsClient, assumeRole)
 	}
+
+	client := cloudformation.NewFromConfig(cfg, func(o *cloudformation.Options) {
+		o.Credentials = creds
+	})
 
 	if err = (&controllers.StackReconciler{
 		Client:              mgr.GetClient(),

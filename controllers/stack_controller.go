@@ -45,9 +45,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/cloudformation"
-	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	cf_types "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 
 	cloudformationv1alpha1 "github.com/linki/cloudformation-operator/api/v1alpha1"
 )
@@ -68,9 +68,9 @@ type StackReconciler struct {
 	client.Client
 	Log                 logr.Logger
 	Scheme              *runtime.Scheme
-	CloudFormation      cloudformationiface.CloudFormationAPI
+	CloudFormation      *cloudformation.Client
 	DefaultTags         map[string]string
-	DefaultCapabilities []string
+	DefaultCapabilities []cf_types.Capability
 	DryRun              bool
 }
 
@@ -177,18 +177,18 @@ func (r *StackReconciler) createStack(loop *StackLoop) error {
 	}
 
 	input := &cloudformation.CreateStackInput{
-		Capabilities: aws.StringSlice(r.DefaultCapabilities),
+		Capabilities: r.DefaultCapabilities,
 		StackName:    aws.String(loop.instance.Name),
 		TemplateBody: aws.String(loop.instance.Spec.Template),
 		Parameters:   r.stackParameters(loop),
 		Tags:         stackTags,
 	}
 
-	if _, err := r.CloudFormation.CreateStack(input); err != nil {
+	if _, err := r.CloudFormation.CreateStack(loop.ctx, input); err != nil {
 		return err
 	}
 
-	if err := r.waitWhile(loop, cloudformation.StackStatusCreateInProgress); err != nil {
+	if err := r.waitWhile(loop, cf_types.StackStatusCreateInProgress); err != nil {
 		return err
 	}
 
@@ -220,14 +220,14 @@ func (r *StackReconciler) updateStack(loop *StackLoop) error {
 	}
 
 	input := &cloudformation.UpdateStackInput{
-		Capabilities: aws.StringSlice(r.DefaultCapabilities),
+		Capabilities: r.DefaultCapabilities,
 		StackName:    aws.String(loop.instance.Name),
 		TemplateBody: aws.String(loop.instance.Spec.Template),
 		Parameters:   r.stackParameters(loop),
 		Tags:         stackTags,
 	}
 
-	if _, err := r.CloudFormation.UpdateStack(input); err != nil {
+	if _, err := r.CloudFormation.UpdateStack(loop.ctx, input); err != nil {
 		if strings.Contains(err.Error(), "No updates are to be performed.") {
 			r.Log.WithValues("stack", loop.instance.Name).Info("stack already updated")
 			return nil
@@ -235,7 +235,7 @@ func (r *StackReconciler) updateStack(loop *StackLoop) error {
 		return err
 	}
 
-	if err := r.waitWhile(loop, cloudformation.StackStatusUpdateInProgress); err != nil {
+	if err := r.waitWhile(loop, cf_types.StackStatusUpdateInProgress); err != nil {
 		return err
 	}
 
@@ -256,7 +256,7 @@ func (r *StackReconciler) deleteStack(loop *StackLoop) error {
 	}
 
 	if !hasOwnership {
-		r.Log.WithValues("stack", loop.instance.Name).Info("no ownerhsip")
+		r.Log.WithValues("stack", loop.instance.Name).Info("no ownership")
 		return nil
 	}
 
@@ -264,15 +264,16 @@ func (r *StackReconciler) deleteStack(loop *StackLoop) error {
 		StackName: aws.String(loop.instance.Name),
 	}
 
-	if _, err := r.CloudFormation.DeleteStack(input); err != nil {
+	if _, err := r.CloudFormation.DeleteStack(loop.ctx, input); err != nil {
 		return err
 	}
 
-	return r.waitWhile(loop, cloudformation.StackStatusDeleteInProgress)
+	return r.waitWhile(loop, cf_types.StackStatusDeleteInProgress)
 }
 
-func (r *StackReconciler) getStack(loop *StackLoop) (*cloudformation.Stack, error) {
-	resp, err := r.CloudFormation.DescribeStacks(&cloudformation.DescribeStacksInput{
+func (r *StackReconciler) getStack(loop *StackLoop) (*cf_types.Stack, error) {
+	resp, err := r.CloudFormation.DescribeStacks(context.TODO(), &cloudformation.DescribeStacksInput{
+		NextToken: nil,
 		StackName: aws.String(loop.instance.Name),
 	})
 	if err != nil {
@@ -285,7 +286,7 @@ func (r *StackReconciler) getStack(loop *StackLoop) (*cloudformation.Stack, erro
 		return nil, ErrStackNotFound
 	}
 
-	return resp.Stacks[0], nil
+	return &resp.Stacks[0], nil
 }
 
 func (r *StackReconciler) stackExists(loop *StackLoop) (bool, error) {
@@ -315,7 +316,7 @@ func (r *StackReconciler) hasOwnership(loop *StackLoop) (bool, error) {
 	}
 
 	for _, tag := range cfs.Tags {
-		if aws.StringValue(tag.Key) == controllerKey && aws.StringValue(tag.Value) == controllerValue {
+		if *tag.Key == controllerKey && *tag.Value == controllerValue {
 			return true, nil
 		}
 	}
@@ -329,12 +330,12 @@ func (r *StackReconciler) updateStackStatus(loop *StackLoop) error {
 		return err
 	}
 
-	stackID := aws.StringValue(cfs.StackId)
+	stackID := *cfs.StackId
 
 	outputs := map[string]string{}
 	if cfs.Outputs != nil && len(cfs.Outputs) > 0 {
 		for _, output := range cfs.Outputs {
-			outputs[aws.StringValue(output.OutputKey)] = aws.StringValue(output.OutputValue)
+			outputs[*output.OutputKey] = *output.OutputValue
 		}
 	}
 
@@ -362,7 +363,7 @@ func (r *StackReconciler) updateStackStatus(loop *StackLoop) error {
 	return nil
 }
 
-func (r *StackReconciler) waitWhile(loop *StackLoop, status string) error {
+func (r *StackReconciler) waitWhile(loop *StackLoop, status cf_types.StackStatus) error {
 	for {
 		cfs, err := r.getStack(loop)
 		if err != nil {
@@ -371,7 +372,7 @@ func (r *StackReconciler) waitWhile(loop *StackLoop, status string) error {
 			}
 			return err
 		}
-		current := aws.StringValue(cfs.StackStatus)
+		current := cfs.StackStatus
 
 		r.Log.WithValues("stack", loop.instance.Name, "status", current).Info("waiting for stack")
 
@@ -385,11 +386,11 @@ func (r *StackReconciler) waitWhile(loop *StackLoop, status string) error {
 }
 
 // stackParameters converts the parameters field on a Stack resource to CloudFormation Parameters.
-func (r *StackReconciler) stackParameters(loop *StackLoop) []*cloudformation.Parameter {
-	var params []*cloudformation.Parameter
+func (r *StackReconciler) stackParameters(loop *StackLoop) []cf_types.Parameter {
+	var params []cf_types.Parameter
 	if loop.instance.Spec.Parameters != nil {
 		for k, v := range loop.instance.Spec.Parameters {
-			params = append(params, &cloudformation.Parameter{
+			params = append(params, cf_types.Parameter{
 				ParameterKey:   aws.String(k),
 				ParameterValue: aws.String(v),
 			})
@@ -415,14 +416,14 @@ func (r *StackReconciler) getObjectReference(owner metav1.Object) (types.UID, er
 
 // stackTags converts the tags field on a Stack resource to CloudFormation Tags.
 // Furthermore, it adds a tag for marking ownership as well as any tags given by defaultTags.
-func (r *StackReconciler) stackTags(loop *StackLoop) ([]*cloudformation.Tag, error) {
+func (r *StackReconciler) stackTags(loop *StackLoop) ([]cf_types.Tag, error) {
 	ref, err := r.getObjectReference(loop.instance)
 	if err != nil {
 		return nil, err
 	}
 
 	// ownership tags
-	tags := []*cloudformation.Tag{
+	tags := []cf_types.Tag{
 		{
 			Key:   aws.String(controllerKey),
 			Value: aws.String(controllerValue),
@@ -435,7 +436,7 @@ func (r *StackReconciler) stackTags(loop *StackLoop) ([]*cloudformation.Tag, err
 
 	// default tags
 	for k, v := range r.DefaultTags {
-		tags = append(tags, &cloudformation.Tag{
+		tags = append(tags, cf_types.Tag{
 			Key:   aws.String(k),
 			Value: aws.String(v),
 		})
@@ -444,7 +445,7 @@ func (r *StackReconciler) stackTags(loop *StackLoop) ([]*cloudformation.Tag, err
 	// tags specified on the Stack resource
 	if loop.instance.Spec.Tags != nil {
 		for k, v := range loop.instance.Spec.Tags {
-			tags = append(tags, &cloudformation.Tag{
+			tags = append(tags, cf_types.Tag{
 				Key:   aws.String(k),
 				Value: aws.String(v),
 			})
