@@ -28,12 +28,7 @@ package controllers
 import (
 	"context"
 	coreerrors "errors"
-	"fmt"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
 	"reflect"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"strings"
@@ -399,29 +394,9 @@ func (r *StackReconciler) stackParameters(loop *StackLoop) []cf_types.Parameter 
 	return params
 }
 
-func (r *StackReconciler) getObjectReference(owner metav1.Object) (types.UID, error) {
-	ro, ok := owner.(runtime.Object)
-	if !ok {
-		return "", fmt.Errorf("%T is not a runtime.Object, cannot call SetControllerReference", owner)
-	}
-
-	gvk, err := apiutil.GVKForObject(ro, r.Scheme)
-	if err != nil {
-		return "", err
-	}
-
-	ref := *metav1.NewControllerRef(owner, schema.GroupVersionKind{Group: gvk.Group, Version: gvk.Version, Kind: gvk.Kind})
-	return ref.UID, nil
-}
-
 // stackTags converts the tags field on a Stack resource to CloudFormation Tags.
 // Furthermore, it adds a tag for marking ownership as well as any tags given by defaultTags.
 func (r *StackReconciler) stackTags(loop *StackLoop) ([]cf_types.Tag, error) {
-	ref, err := r.getObjectReference(loop.instance)
-	if err != nil {
-		return nil, err
-	}
-
 	// ownership tags
 	tags := []cf_types.Tag{
 		{
@@ -430,7 +405,7 @@ func (r *StackReconciler) stackTags(loop *StackLoop) ([]cf_types.Tag, error) {
 		},
 		{
 			Key:   aws.String(ownerKey),
-			Value: aws.String(string(ref)),
+			Value: aws.String(string(loop.instance.UID)),
 		},
 	}
 
