@@ -28,6 +28,7 @@ package controllers
 import (
 	"context"
 	coreerrors "errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -183,7 +184,7 @@ func (r *StackReconciler) createStack(loop *StackLoop) error {
 		return err
 	}
 
-	if err := r.waitWhile(loop, cf_types.StackStatusCreateInProgress); err != nil {
+	if err := r.waitTillDone(loop); err != nil {
 		return err
 	}
 
@@ -230,7 +231,7 @@ func (r *StackReconciler) updateStack(loop *StackLoop) error {
 		return err
 	}
 
-	if err := r.waitWhile(loop, cf_types.StackStatusUpdateInProgress); err != nil {
+	if err := r.waitTillDone(loop); err != nil {
 		return err
 	}
 
@@ -263,7 +264,7 @@ func (r *StackReconciler) deleteStack(loop *StackLoop) error {
 		return err
 	}
 
-	return r.waitWhile(loop, cf_types.StackStatusDeleteInProgress)
+	return r.waitTillDone(loop)
 }
 
 func (r *StackReconciler) getStack(loop *StackLoop) (*cf_types.Stack, error) {
@@ -319,13 +320,21 @@ func (r *StackReconciler) hasOwnership(loop *StackLoop) (bool, error) {
 	return false, nil
 }
 
-func (r *StackReconciler) updateStackStatus(loop *StackLoop) error {
-	cfs, err := r.getStack(loop)
-	if err != nil {
-		return err
-	}
+// Allow passing a current/recent fetch of the stack object to the method (optionally)
+func (r *StackReconciler) updateStackStatus(loop *StackLoop, stack ...*cf_types.Stack) error {
+	var err error
+	var cfs *cf_types.Stack
+	update := false
 
-	stackID := *cfs.StackId
+	if len(stack) > 0 {
+		cfs = stack[0]
+	}
+	if cfs == nil {
+		cfs, err = r.getStack(loop)
+		if err != nil {
+			return err
+		}
+	}
 
 	outputs := map[string]string{}
 	if cfs.Outputs != nil && len(cfs.Outputs) > 0 {
@@ -334,13 +343,28 @@ func (r *StackReconciler) updateStackStatus(loop *StackLoop) error {
 		}
 	}
 
+	// Checking the status
+	if string(cfs.StackStatus) != loop.instance.Status.StackStatus {
+		update = true
+		loop.instance.Status.StackStatus = string(cfs.StackStatus)
+		loop.instance.Status.CreatedTime = metav1.NewTime(*cfs.CreationTime)
+		if cfs.LastUpdatedTime != nil {
+			loop.instance.Status.UpdatedTime = metav1.NewTime(*cfs.LastUpdatedTime)
+		}
+	}
+
+	// Checking stack ID and outputs for changes.
+	stackID := *cfs.StackId
 	if stackID != loop.instance.Status.StackID || !reflect.DeepEqual(outputs, loop.instance.Status.Outputs) {
+		update = true
 		loop.instance.Status.StackID = stackID
 		if len(outputs) > 0 {
 			loop.instance.Status.Outputs = outputs
 		}
+	}
 
-		err := r.Status().Update(loop.ctx, loop.instance)
+	if update {
+		err = r.Status().Update(loop.ctx, loop.instance)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				// Request object not found, could have been deleted after reconcile request.
@@ -358,7 +382,17 @@ func (r *StackReconciler) updateStackStatus(loop *StackLoop) error {
 	return nil
 }
 
-func (r *StackReconciler) waitWhile(loop *StackLoop, status cf_types.StackStatus) error {
+func (r *StackReconciler) waitTillDone(loop *StackLoop) error {
+	terminalStates := []cf_types.StackStatus{
+		cf_types.StackStatusCreateComplete,
+		cf_types.StackStatusCreateFailed,
+		cf_types.StackStatusDeleteComplete,
+		cf_types.StackStatusRollbackComplete,
+		cf_types.StackStatusRollbackFailed,
+		cf_types.StackStatusUpdateComplete,
+		cf_types.StackStatusUpdateRollbackComplete,
+		cf_types.StackStatusUpdateRollbackFailed,
+	}
 	for {
 		cfs, err := r.getStack(loop)
 		if err != nil {
@@ -371,13 +405,26 @@ func (r *StackReconciler) waitWhile(loop *StackLoop, status cf_types.StackStatus
 
 		r.Log.WithValues("stack", loop.instance.Name, "status", current).Info("waiting for stack")
 
-		if current == status {
+		if !contains(terminalStates, current) {
+			// Let's update the status in Kubernetes as the stack transitions.
+			if string(current) != loop.instance.Status.StackStatus {
+				_ = r.updateStackStatus(loop, cfs)
+			}
 			time.Sleep(time.Second)
 			continue
 		}
 
 		return nil
 	}
+}
+
+func contains(s []cf_types.StackStatus, e cf_types.StackStatus) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
 
 // stackParameters converts the parameters field on a Stack resource to CloudFormation Parameters.

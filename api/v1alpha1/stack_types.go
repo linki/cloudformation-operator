@@ -45,6 +45,14 @@ type StackSpec struct {
 type StackStatus struct {
 	StackID string `json:"stackID"`
 	// +kubebuilder:validation:Optional
+	StackStatus string `json:"stackStatus"`
+	// +kubebuilder:validation:Optional
+	// +nullable
+	CreatedTime metav1.Time `json:"createdTime,omitEmpty"`
+	// +kubebuilder:validation:Optional
+	// +nullable
+	UpdatedTime metav1.Time `json:"updatedTime,omitEmpty"`
+	// +kubebuilder:validation:Optional
 	Outputs map[string]string `json:"outputs,omitempty"`
 }
 

@@ -52,11 +52,21 @@ spec:
           status:
             description: Defines the observed state of Stack
             properties:
+              createdTime:
+                format: date-time
+                nullable: true
+                type: string
               outputs:
                 additionalProperties:
                   type: string
                 type: object
               stackID:
+                type: string
+              stackStatus:
+                type: string
+              updatedTime:
+                format: date-time
+                nullable: true
                 type: string
             required:
             - stackID
