@@ -60,6 +60,29 @@ spec:
                 additionalProperties:
                   type: string
                 type: object
+              resources:
+                items:
+                  description: Defines a resource provided/managed by a Stack and
+                    its current state
+                  properties:
+                    logicalID:
+                      type: string
+                    physicalID:
+                      type: string
+                    status:
+                      type: string
+                    statusReason:
+                      type: string
+                    type:
+                      type: string
+                  required:
+                  - logicalID
+                  - physicalID
+                  - status
+                  - type
+                  type: object
+                nullable: true
+                type: array
               stackID:
                 type: string
               stackStatus:

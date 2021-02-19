@@ -285,6 +285,45 @@ func (r *StackReconciler) getStack(loop *StackLoop) (*cf_types.Stack, error) {
 	return &resp.Stacks[0], nil
 }
 
+func (r *StackReconciler) getStackResources(loop *StackLoop) ([]cloudformationv1alpha1.StackResource, error) {
+
+	var next *string
+	next = nil
+	toReturn := make([]cloudformationv1alpha1.StackResource, 0)
+
+	for {
+		resp, err := r.CloudFormation.ListStackResources(loop.ctx, &cloudformation.ListStackResourcesInput{
+			NextToken: next,
+			StackName: aws.String(loop.instance.Name),
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		for _, e := range resp.StackResourceSummaries {
+			reason := ""
+			if e.ResourceStatusReason != nil {
+				reason = *e.ResourceStatusReason
+			}
+			resourceSummary := cloudformationv1alpha1.StackResource{
+				LogicalId:    *e.LogicalResourceId,
+				PhysicalId:   *e.PhysicalResourceId,
+				Type:         *e.ResourceType,
+				Status:       string(e.ResourceStatus),
+				StatusReason: reason,
+			}
+			toReturn = append(toReturn, resourceSummary)
+		}
+
+		next = resp.NextToken
+		if next == nil {
+			break
+		}
+	}
+
+	return toReturn, nil
+}
+
 func (r *StackReconciler) stackExists(loop *StackLoop) (bool, error) {
 	_, err := r.getStack(loop)
 	if err != nil {
@@ -361,6 +400,16 @@ func (r *StackReconciler) updateStackStatus(loop *StackLoop, stack ...*cf_types.
 		if len(outputs) > 0 {
 			loop.instance.Status.Outputs = outputs
 		}
+	}
+
+	// Recording all stack resources
+	resources, err := r.getStackResources(loop)
+	if err != nil {
+		return err
+	}
+	if !reflect.DeepEqual(resources, loop.instance.Status.Resources) {
+		update = true
+		loop.instance.Status.Resources = resources
 	}
 
 	if update {

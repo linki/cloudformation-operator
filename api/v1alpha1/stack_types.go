@@ -53,7 +53,20 @@ type StackStatus struct {
 	// +nullable
 	UpdatedTime metav1.Time `json:"updatedTime,omitEmpty"`
 	// +kubebuilder:validation:Optional
-	Outputs map[string]string `json:"outputs,omitempty"`
+	Outputs map[string]string `json:"outputs,omitEmpty"`
+	// +kubebuilder:validation:Optional
+	// +nullable
+	Resources []StackResource `json:"resources,omitEmpty"`
+}
+
+// Defines a resource provided/managed by a Stack and its current state
+type StackResource struct {
+	LogicalId  string `json:"logicalID"`
+	PhysicalId string `json:"physicalID"`
+	Type       string `json:"type"`
+	Status     string `json:"status"`
+	// +kubebuilder:validation:Optional
+	StatusReason string `json:"statusReason,omitEmpty"`
 }
 
 // +kubebuilder:object:root=true
