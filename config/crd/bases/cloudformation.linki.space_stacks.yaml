@@ -59,6 +59,7 @@ spec:
               outputs:
                 additionalProperties:
                   type: string
+                nullable: true
                 type: object
               resources:
                 items:

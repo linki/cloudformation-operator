@@ -53,6 +53,7 @@ type StackStatus struct {
 	// +nullable
 	UpdatedTime metav1.Time `json:"updatedTime,omitEmpty"`
 	// +kubebuilder:validation:Optional
+	// +nullable
 	Outputs map[string]string `json:"outputs,omitEmpty"`
 	// +kubebuilder:validation:Optional
 	// +nullable

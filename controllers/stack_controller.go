@@ -305,9 +305,14 @@ func (r *StackReconciler) getStackResources(loop *StackLoop) ([]cloudformationv1
 			if e.ResourceStatusReason != nil {
 				reason = *e.ResourceStatusReason
 			}
+			physicalID := ""
+			if e.PhysicalResourceId != nil {
+				physicalID = *e.PhysicalResourceId
+			}
+
 			resourceSummary := cloudformationv1alpha1.StackResource{
 				LogicalId:    *e.LogicalResourceId,
-				PhysicalId:   *e.PhysicalResourceId,
+				PhysicalId:   physicalID,
 				Type:         *e.ResourceType,
 				Status:       string(e.ResourceStatus),
 				StatusReason: reason,
@@ -453,12 +458,11 @@ func (r *StackReconciler) waitTillDone(loop *StackLoop) error {
 		}
 		current := cfs.StackStatus
 
-		r.Log.WithValues("stack", loop.instance.Name, "status", current).Info("waiting for stack")
-
 		if !contains(terminalStates, current) {
 			// Let's update the status in Kubernetes as the stack transitions.
-			if string(current) != loop.instance.Status.StackStatus {
-				_ = r.updateStackStatus(loop, cfs)
+			err = r.updateStackStatus(loop, cfs)
+			if err != nil {
+				r.Log.Error(err, "failed to update stack status")
 			}
 			time.Sleep(time.Second)
 			continue
