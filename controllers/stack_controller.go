@@ -161,7 +161,7 @@ func (r *StackReconciler) createStack(loop *StackLoop) error {
 	}
 
 	if !hasOwnership {
-		r.Log.WithValues("stack", loop.instance.Name).Info("no ownerhsip")
+		r.Log.WithValues("stack", loop.instance.Name).Info("no ownership")
 		return nil
 	}
 
@@ -204,7 +204,7 @@ func (r *StackReconciler) updateStack(loop *StackLoop) error {
 	}
 
 	if !hasOwnership {
-		r.Log.WithValues("stack", loop.instance.Name).Info("no ownerhsip")
+		r.Log.WithValues("stack", loop.instance.Name).Info("no ownership")
 		return nil
 	}
 
@@ -267,7 +267,7 @@ func (r *StackReconciler) deleteStack(loop *StackLoop) error {
 }
 
 func (r *StackReconciler) getStack(loop *StackLoop) (*cf_types.Stack, error) {
-	resp, err := r.CloudFormation.DescribeStacks(context.TODO(), &cloudformation.DescribeStacksInput{
+	resp, err := r.CloudFormation.DescribeStacks(loop.ctx, &cloudformation.DescribeStacksInput{
 		NextToken: nil,
 		StackName: aws.String(loop.instance.Name),
 	})
