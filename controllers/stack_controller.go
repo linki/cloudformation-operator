@@ -436,6 +436,7 @@ func (r *StackReconciler) waitTillDone(loop *StackLoop) error {
 		cf_types.StackStatusCreateComplete,
 		cf_types.StackStatusCreateFailed,
 		cf_types.StackStatusDeleteComplete,
+		cf_types.StackStatusDeleteFailed,
 		cf_types.StackStatusRollbackComplete,
 		cf_types.StackStatusRollbackFailed,
 		cf_types.StackStatusUpdateComplete,
