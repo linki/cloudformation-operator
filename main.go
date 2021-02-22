@@ -30,7 +30,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
-	cf_types "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
+	cfTypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 
 	"github.com/spf13/pflag"
@@ -134,9 +134,9 @@ func main() {
 		setupLog.Error(err, "error parsing flag")
 		os.Exit(1)
 	}
-	defaultCapabilities := make([]cf_types.Capability, len(paramStringSlice))
+	defaultCapabilities := make([]cfTypes.Capability, len(paramStringSlice))
 	for i := range paramStringSlice {
-		defaultCapabilities[i] = cf_types.Capability(paramStringSlice[i])
+		defaultCapabilities[i] = cfTypes.Capability(paramStringSlice[i])
 	}
 
 	dryRun, err := StackFlagSet.GetBool("dry-run")
@@ -163,14 +163,29 @@ func main() {
 		o.Credentials = creds
 	})
 
+	cfHelper := &controllers.CloudFormationHelper{
+		CloudFormation: client,
+	}
+
+	stackFollower := &controllers.StackFollower{
+		Client:               mgr.GetClient(),
+		Log:                  ctrl.Log.WithName("workers").WithName("Stack"),
+		SubmissionChannel:    make(chan *cloudformationv1alpha1.Stack),
+		CloudFormationHelper: cfHelper,
+	}
+	go stackFollower.Receiver()
+	go stackFollower.Worker()
+
 	if err = (&controllers.StackReconciler{
-		Client:              mgr.GetClient(),
-		Log:                 ctrl.Log.WithName("controllers").WithName("Stack"),
-		Scheme:              mgr.GetScheme(),
-		CloudFormation:      client,
-		DefaultTags:         defaultTags,
-		DefaultCapabilities: defaultCapabilities,
-		DryRun:              dryRun,
+		Client:               mgr.GetClient(),
+		Log:                  ctrl.Log.WithName("controllers").WithName("Stack"),
+		Scheme:               mgr.GetScheme(),
+		CloudFormation:       client,
+		StackFollower:        stackFollower,
+		CloudFormationHelper: cfHelper,
+		DefaultTags:          defaultTags,
+		DefaultCapabilities:  defaultCapabilities,
+		DryRun:               dryRun,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Stack")
 		os.Exit(1)
