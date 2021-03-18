@@ -16,7 +16,7 @@ You need API access to a cluster running at least Kubernetes v1.17.0+.
 Start the CloudFormation operator in your cluster by using the provided manifests:
 
 ```console
-$ make deploy IMG=quay.io/cuppett/cloudformation-operator
+$ make deploy IMG=quay.io/linki/cloudformation-operator:latest
 ```
 
 Modify the `region` flag to match your cluster's.
@@ -325,8 +325,8 @@ $ WATCH_NAMESPACE=default KUBERNETES_CONFIG=~/.kube/config make run OPERATOR_FLA
 ## Build the docker image
 
 ```console
-$ make docker-build quay.io/linki/cloudformation-operator:v0.9.0
-$ make docker-push quay.io/linki/cloudformation-operator:v0.9.0
+$ make docker-build quay.io/linki/cloudformation-operator:latest
+$ make docker-push quay.io/linki/cloudformation-operator:latest
 ```
 
 ## Test it locally
