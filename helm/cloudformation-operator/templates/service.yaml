@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cloudformation-operator-controller-manager-metrics-service
+  labels:
+    control-plane: controller-manager
+    {{- include "cloudformation-operator.labels" . | nindent 4 }}
+spec:
+  ports:
+  - name: https
+    port: 8443
+    targetPort: https
+  selector:
+    control-plane: controller-manager
