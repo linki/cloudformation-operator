@@ -27,7 +27,7 @@ spec:
         - /manager
         env:
         - name: AWS_REGION
-          value: us-east-2
+          value: eu-central-1
         args:
         - --leader-elect
         image: controller:latest
