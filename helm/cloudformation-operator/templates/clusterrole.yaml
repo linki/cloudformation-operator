@@ -1,0 +1,67 @@
+{{- if .Values.rbac.create -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cloudformation-operator-manager-role
+  labels:
+  {{- include "cloudformation-operator.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - cloudformation.linki.space
+  resources:
+  - stacks
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - cloudformation.linki.space
+  resources:
+  - stacks/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - cloudformation.linki.space
+  resources:
+  - stacks/status
+  verbs:
+  - get
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cloudformation-operator-metrics-reader
+  labels:
+  {{- include "cloudformation-operator.labels" . | nindent 4 }}
+rules:
+- nonResourceURLs:
+  - /metrics
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cloudformation-operator-proxy-role
+  labels:
+  {{- include "cloudformation-operator.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - authentication.k8s.io
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups:
+  - authorization.k8s.io
+  resources:
+  - subjectaccessreviews
+  verbs:
+  - create
+{{- end -}}

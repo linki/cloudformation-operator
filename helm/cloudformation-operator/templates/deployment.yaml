@@ -1,14 +1,15 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ template "cloudformation-operator.name" . }}
+  name: {{ include "cloudformation-operator.fullname" . }}
   labels:
-{{ include "cloudformation-operator.helmStandardLabels" . | indent 4 }}
+    control-plane: controller-manager
+    {{- include "cloudformation-operator.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicas }}
   selector:
     matchLabels:
-      name: {{ template "cloudformation-operator.name" . }}
+      control-plane: controller-manager
   template:
     metadata:
       annotations:
@@ -16,23 +17,44 @@ spec:
 {{ toYaml .Values.podAnnotations | indent 8 }}
         {{- end }}
       labels:
-        name: {{ template "cloudformation-operator.name" . }}
-{{ include "cloudformation-operator.helmPodLabels" . | indent 8 }}
+        control-plane: controller-manager
+        {{- include "cloudformation-operator.selectorLabels" . | nindent 8 }}
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- if .Values.nodeSelector }}
       nodeSelector:
 {{ toYaml .Values.nodeSelector | indent 8 }}
       {{ end }}
-      serviceAccountName: {{ if .Values.rbac.create }}{{ template "cloudformation-operator.name" . }}{{ else }}"{{ .Values.rbac.serviceAccountName }}"{{ end }}
+      serviceAccountName: {{ include "cloudformation-operator.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      terminationGracePeriodSeconds: 10
       containers:
-        - name: cloudformation-operator
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        - args:
+          - --secure-listen-address=0.0.0.0:8443
+          - --upstream=http://127.0.0.1:8080/
+          - --logtostderr=true
+          - --v=10
+          image: gcr.io/kubebuilder/kube-rbac-proxy:v0.5.0
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          name: kube-rbac-proxy
+          ports:
+          - containerPort: 8443
+            name: https
+        - name: manager
+          {{- with .Values.image }}
+          image: "{{ .repository }}{{- if .sha }}@{{ .sha }}{{ else }}:{{ .tag | default "latest" }}{{ end }}"
+          {{- end }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
-          - cloudformation-operator
+          - /manager
           args:
-{{- if .Values.operator.region }}
-          - --region={{ .Values.operator.region }}
-        {{- end }}
+          - --health-probe-bind-address=:8081
+          - --metrics-bind-address=127.0.0.1:8080
+          - --leader-elect
 {{- if .Values.tags }}
 {{- range $key, $value := .Values.tags }}
           - --tag={{ $key }}={{ $value }}
@@ -42,22 +64,32 @@ spec:
           - --capability CAPABILITY_IAM
         {{- end }}
           env:
-          - name: WATCH_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-          - name: POD_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.name
-          - name: OPERATOR_NAME
-            value: {{ template "cloudformation-operator.name" . }}
+          - name: AWS_REGION
+{{- if .Values.operator.region }}
+            value: {{ .Values.operator.region }}
+{{- else }}
+            value: eu-central-1
+{{- end }}
 {{- if .Values.extraEnv}}
           {{- range $key, $value := .Values.extraEnv }}
           - name: {{ $key }}
             value: {{ $value }}
           {{- end }}
           {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
           {{- if .Values.resources }}
           resources:
 {{ toYaml .Values.resources | indent 12 }}
@@ -74,6 +106,7 @@ spec:
       affinity:
 {{ toYaml .Values.affinity | indent 8 }}
 {{- end }}
+      terminationGracePeriodSeconds: 10
 {{- if .Values.tolerations }}
       tolerations:
 {{ toYaml .Values.tolerations | indent 8 }}

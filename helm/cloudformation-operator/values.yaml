@@ -3,10 +3,24 @@
 # Declare variables to be passed into your templates.
 image:
   repository: quay.io/linki/cloudformation-operator
-  tag: v0.7.0
+  tag: ""
+  sha: ""
   pullPolicy: IfNotPresent
 
 replicas: 1
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
 
 ## Pod Annotations
 podAnnotations:
@@ -16,7 +30,7 @@ podAnnotations:
 operator:
   region: eu-central-1
 
-#You may want to assign tags to your CloudFormation stacks. 
+#You may want to assign tags to your CloudFormation stacks.
 #The tags added to a CloudFormation stack will be propagated to the managed resources.
 tags:
 #  wambo: baz
@@ -32,13 +46,10 @@ rbac:
   serviceAccountName: cloudformation-operator
 
 ## Pod Resources
-#resources:
-#  requests:
-#    memory: "64Mi"
-#    cpu: "250m"
-#  limits:
-#    memory: "128Mi"
-#    cpu: "500m"
+resources:
+  requests:
+    cpu: 5m
+    memory: 45Mi
 
 ## Pod Affinity
 affinity: {}

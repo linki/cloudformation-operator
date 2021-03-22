@@ -6,11 +6,11 @@ os:
 language: go
 
 go:
-- "1.13"
+- "1.15"
 - tip
 
 env:
 - GO111MODULE=on
 
 script:
-- go build cmd/manager/main.go
+- go build main.go
