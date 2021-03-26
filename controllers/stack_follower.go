@@ -32,6 +32,7 @@ import (
 	cloudformationv1alpha1 "github.com/linki/cloudformation-operator/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sync"
@@ -69,7 +70,8 @@ func (f *StackFollower) BeingFollowed(stackId string) bool {
 
 // Identify if the follower is actively working this one.
 func (f *StackFollower) startFollowing(stack *cloudformationv1alpha1.Stack) {
-	f.mapPollingList.Store(stack.Status.StackID, stack)
+	namespacedName := &types.NamespacedName{Name: stack.Name, Namespace: stack.Namespace}
+	f.mapPollingList.Store(stack.Status.StackID, namespacedName)
 	f.Log.Info("Now following Stack", "StackID", stack.Status.StackID)
 }
 
@@ -157,7 +159,21 @@ func (f *StackFollower) UpdateStackStatus(ctx context.Context, instance *cloudfo
 func (f *StackFollower) processStack(key interface{}, value interface{}) bool {
 
 	stackId := key.(string)
-	stack := value.(*cloudformationv1alpha1.Stack)
+	namespacedName := value.(*types.NamespacedName)
+	stack := &cloudformationv1alpha1.Stack{}
+
+	// Fetch the Stack instance
+	err := f.Client.Get(context.TODO(), *namespacedName, stack)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			f.Log.Info("Stack resource not found. Ignoring since object must be deleted")
+			f.stopFollowing(stackId)
+			return true
+		}
+		// Error reading the object - requeue the request.
+		f.Log.Error(err, "Failed to get Stack on this pass, requeuing")
+		return true
+	}
 
 	cfs, err := f.CloudFormationHelper.GetStack(context.TODO(), stack)
 	if err != nil {
