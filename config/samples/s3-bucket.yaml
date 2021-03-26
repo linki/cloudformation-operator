@@ -3,6 +3,8 @@ kind: Stack
 metadata:
   name: my-bucket
 spec:
+  tags:
+    foo: dataFromStack
   parameters:
     VersioningConfiguration: Enabled
   template: |
@@ -24,3 +26,8 @@ spec:
           VersioningConfiguration:
             Status:
               Ref: VersioningConfiguration
+
+    Outputs:
+      BucketName:
+        Value: !Ref 'S3Bucket'
+        Description: Name of the sample Amazon S3 bucket.
