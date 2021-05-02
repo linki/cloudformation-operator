@@ -1,0 +1,231 @@
+apiVersion: cloudformation.linki.space/v1alpha1
+kind: Stack
+metadata:
+  name: my-cdn
+spec:
+  template: |
+    ---
+    AWSTemplateFormatVersion: 2010-09-09
+    Description: 'Content distribution template for AWS public zones (S3 bucket, CloudFront distribution, etc.)'
+    Parameters:
+      ResourceSuffix:
+        Description: >-
+          (Optional) A LOWER CASE suffix for any resources created by this region script - this
+          allows multiple sets of resources to be in one region.
+        Type: String
+        MinLength: '0'
+        MaxLength: '255'
+        AllowedPattern: '[_a-z0-9-]*'
+        Default: ''
+        ConstraintDescription: contain only lower case alphanumeric characters.
+      DnsZone:
+        Description: >-
+          (Optional) Amazon Route53 ZONE Name. This is the zone where a DNS record will be
+          created for the web app. The name should NOT end with a period.
+        Type: String
+        Default: ''
+      AcmCertificateArn:
+        Description: >-
+          (Optional) Amazon Certificate Manager ARN (us-east-1) used by CloudFront to protect this distribution
+        Type: String
+        Default: ''
+    Conditions:
+      HasResourceSuffix: !Not
+      - !Equals
+        - !Ref ResourceSuffix
+        - ''
+      HasDnsZone: !Not
+      - !Equals
+        - !Ref DnsZone
+        - ''
+      HasCert: !Not
+      - !Equals
+        - !Ref AcmCertificateArn
+        - ''
+    Resources:
+      ContentBucket:
+        Type: 'AWS::S3::Bucket'
+        Properties:
+          BucketEncryption:
+            ServerSideEncryptionConfiguration:
+            - ServerSideEncryptionByDefault:
+                SSEAlgorithm: AES256
+          BucketName: !Join
+          - '-'
+          - - cdn
+            - !Ref 'AWS::Region'
+            - !Ref 'AWS::AccountId'
+            - !If
+              - HasResourceSuffix
+              - !Ref ResourceSuffix
+              - !Ref 'AWS::NoValue'
+          LifecycleConfiguration:
+            Rules:
+            - Status: Enabled
+              AbortIncompleteMultipartUpload:
+                DaysAfterInitiation: 7
+      CloudFrontOriginAccessIdentity:
+        Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+        Properties:
+          CloudFrontOriginAccessIdentityConfig:
+            Comment: Identity for CDN
+      ContentBucketPolicy:
+        Type: 'AWS::S3::BucketPolicy'
+        Properties:
+          Bucket: !Ref ContentBucket
+          PolicyDocument:
+            Version: 2012-10-17
+            Id: BucketAccessPolicy
+            Statement:
+            - Sid: AllowCloudFrontAccess
+              Effect: Allow
+              Principal:
+                CanonicalUser: !GetAtt
+                - CloudFrontOriginAccessIdentity
+                - S3CanonicalUserId
+              Action: 's3:GetObject'
+              Resource:
+              - !Join
+                - ''
+                - - 'arn:aws:s3:::'
+                  - !Ref ContentBucket
+                  - /*
+      ContentCachePolicy:
+        Type: AWS::CloudFront::CachePolicy
+        Properties:
+          CachePolicyConfig:
+            Comment: Default caching policy
+            Name: !Join
+            - '-'
+            - - 'cdn-master'
+              - !Ref 'AWS::StackName'
+            DefaultTTL: 86400
+            MinTTL: 300
+            MaxTTL: 86400
+            ParametersInCacheKeyAndForwardedToOrigin:
+              EnableAcceptEncodingBrotli: true
+              EnableAcceptEncodingGzip: true
+              CookiesConfig:
+                CookieBehavior: none
+              HeadersConfig:
+                HeaderBehavior: none
+              QueryStringsConfig:
+                QueryStringBehavior: none
+      ContentDistribution:
+        Type: 'AWS::CloudFront::Distribution'
+        Properties:
+          DistributionConfig:
+            Aliases:
+            - !If
+              - HasDnsZone
+              - !Join
+                - ''
+                - - cdn
+                  - !If
+                    - HasResourceSuffix
+                    - !Join
+                      - ''
+                      - - '-'
+                        - !Ref ResourceSuffix
+                    - !Ref 'AWS::NoValue'
+                  - .
+                  - !Ref DnsZone
+              - !Ref 'AWS::NoValue'
+            Origins:
+            - DomainName: !GetAtt
+              - ContentBucket
+              - DomainName
+              Id: !Join
+              - '-'
+              - - s3
+                - !Ref ContentBucket
+              S3OriginConfig:
+                OriginAccessIdentity: !Join
+                - '/'
+                - - 'origin-access-identity'
+                  - 'cloudfront'
+                  - !Ref CloudFrontOriginAccessIdentity
+            Enabled: 'true'
+            Comment: S3 bucket content
+            DefaultCacheBehavior:
+              AllowedMethods:
+              - GET
+              - HEAD
+              CachePolicyId: !Ref ContentCachePolicy
+              Compress: true
+              TargetOriginId: !Join
+              - '-'
+              - - s3
+                - !Ref ContentBucket
+              ViewerProtocolPolicy: redirect-to-https
+            PriceClass: PriceClass_100
+            HttpVersion: http2
+            ViewerCertificate:
+              SslSupportMethod: !If
+              - HasCert
+              - sni-only
+              - !Ref 'AWS::NoValue'
+              MinimumProtocolVersion: TLSv1.2_2019
+              AcmCertificateArn: !If
+              - HasCert
+              - AcmCertificateArn
+              - !Ref 'AWS::NoValue'
+              CloudFrontDefaultCertificate: !If
+              - HasCert
+              - false
+              - true
+      CdnRecordset:
+        Type: 'AWS::Route53::RecordSet'
+        Condition: HasDnsZone
+        Properties:
+          HostedZoneName: !Join
+          - ''
+          - - !Ref DnsZone
+            - .
+          Name: !Join
+          - ''
+          - - cdn
+            - !If
+              - HasResourceSuffix
+              - !Join
+                - ''
+                - - '-'
+                  - !Ref ResourceSuffix
+              - !Ref 'AWS::NoValue'
+            - .
+            - !Ref DnsZone
+            - .
+          Type: A
+          AliasTarget:
+            HostedZoneId: Z2FDTNDATAQYW2
+            DNSName: !GetAtt
+            - ContentDistribution
+            - DomainName
+    Outputs:
+      ContentBucket:
+        Description: Content S3 bucket name
+        Value: !Ref ContentBucket
+        Export:
+          Name: !Join
+          - '-'
+          - - !Ref 'AWS::StackName'
+            - ContentBucket
+      CdnUrl:
+        Description: The base CDN URL where content from the bucket will be accessible
+        Value: !If
+        - HasDnsZone
+        - !Join
+          - ''
+          - - 'https://'
+            - !Ref CdnRecordset
+            - /
+        - !Join
+          - ''
+          - - 'https://'
+            - !GetAtt ContentDistribution.DomainName
+            - /
+        Export:
+          Name: !Join
+          - '-'
+          - - !Ref 'AWS::StackName'
+            - CdnUrl
