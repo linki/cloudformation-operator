@@ -1,5 +1,6 @@
 domain: cloudformation.linki.space
-layout: go.kubebuilder.io/v3
+layout:
+- go.kubebuilder.io/v3
 projectName: cloudformation-operator
 repo: github.com/linki/cloudformation-operator
 resources:
