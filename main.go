@@ -32,9 +32,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	cfTypes "github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-
 	"github.com/spf13/pflag"
 	"os"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -77,6 +78,7 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
+	var err error
 
 	flag.StringVar(&namespace, "namespace", "", "The Kubernetes namespace to watch")
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
@@ -99,15 +101,24 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	options := ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
 		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "64032969.cloudformation.linki.space",
-		Namespace:              namespace,
-	})
+		Namespace:              namespace, // namespaced-scope when the value is not an empty string
+	}
+	// Add support for MultiNamespace set in WATCH_NAMESPACE (e.g ns1,ns2)
+	if strings.Contains(namespace, ",") {
+		setupLog.Info("manager set up with multiple namespaces", "namespaces", namespace)
+		// configure cluster-scoped with MultiNamespacedCacheBuilder
+		options.Namespace = ""
+		options.NewCache = cache.MultiNamespacedCacheBuilder(strings.Split(namespace, ","))
+	}
+
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)

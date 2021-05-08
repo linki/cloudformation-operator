@@ -5,10 +5,16 @@ updates:
   schedule:
     interval: monthly
     time: "07:00"
+  ignore:
+  - dependency-name: "k8s.io/client-go"
+  - dependency-name: "k8s.io/apimachinery"
+  - dependency-name: "sigs.k8s.io/controller-runtime"
   open-pull-requests-limit: 10
 - package-ecosystem: docker
   directory: "/"
   schedule:
     interval: monthly
     time: "07:00"
+  ignore:
+  - dependency-name: "library/golang"
   open-pull-requests-limit: 10
