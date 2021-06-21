@@ -61,7 +61,7 @@ spec:
         {{- end }}
         {{- end }}
 {{- if .Values.capability.enabled }}
-          - --capability CAPABILITY_IAM
+          - --capability=CAPABILITY_IAM
         {{- end }}
           env:
           - name: AWS_REGION
