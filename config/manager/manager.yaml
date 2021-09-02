@@ -22,6 +22,8 @@ spec:
       labels:
         control-plane: controller-manager
     spec:
+      securityContext:
+        runAsNonRoot: true
       containers:
       - command:
         - /manager
@@ -50,4 +52,5 @@ spec:
           requests:
             cpu: 5m
             memory: 45Mi
+      serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
