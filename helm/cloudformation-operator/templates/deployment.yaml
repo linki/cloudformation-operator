@@ -63,6 +63,11 @@ spec:
 {{- if .Values.capability.enabled }}
           - --capability=CAPABILITY_IAM
         {{- end }}
+{{- if .Values.extraArgs }}
+        {{- range $key, $value := .Values.extraArgs }}
+          - --{{ $key }}={{ $value }}
+        {{- end }}
+        {{- end }}
           env:
           - name: AWS_REGION
 {{- if .Values.operator.region }}
