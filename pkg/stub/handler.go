@@ -28,6 +28,10 @@ var (
 	ErrStackNotFound = errors.New("stack not found")
 )
 
+var (
+	ErrStackTagsEmpty = errors.New("stack tags cannot be empty")
+)
+
 type Handler struct {
 	client       cloudformationiface.CloudFormationAPI
 	capabilities []string
@@ -83,12 +87,18 @@ func (h *Handler) createStack(stack *v1alpha1.Stack) error {
 		return nil
 	}
 
+	tags := stackTags(stack, h.defautTags)
+
+	if len(tags) == 0 {
+		return ErrStackTagsEmpty
+	}
+
 	input := &cloudformation.CreateStackInput{
 		Capabilities: aws.StringSlice(h.capabilities),
 		StackName:    aws.String(stack.Name),
 		TemplateBody: aws.String(stack.Spec.Template),
 		Parameters:   stackParameters(stack),
-		Tags:         stackTags(stack, h.defautTags),
+		Tags:         tags,
 	}
 
 	if _, err := h.client.CreateStack(input); err != nil {
@@ -110,12 +120,18 @@ func (h *Handler) updateStack(stack *v1alpha1.Stack) error {
 		return nil
 	}
 
+	tags := stackTags(stack, h.defautTags)
+
+	if len(tags) == 0 {
+		return ErrStackTagsEmpty
+	}
+
 	input := &cloudformation.UpdateStackInput{
 		Capabilities: aws.StringSlice(h.capabilities),
 		StackName:    aws.String(stack.Name),
 		TemplateBody: aws.String(stack.Spec.Template),
 		Parameters:   stackParameters(stack),
-		Tags:         stackTags(stack, h.defautTags),
+		Tags:         tags,
 	}
 
 	if _, err := h.client.UpdateStack(input); err != nil {
