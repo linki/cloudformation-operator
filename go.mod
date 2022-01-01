@@ -3,9 +3,10 @@ module github.com/linki/cloudformation-operator
 go 1.15
 
 require (
-	github.com/aws/aws-sdk-go-v2 v1.3.0
+	github.com/aws/aws-sdk-go-v2 v1.11.2
 	github.com/aws/aws-sdk-go-v2/config v1.1.3
 	github.com/aws/aws-sdk-go-v2/credentials v1.1.3
+	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.2.0
 	github.com/aws/aws-sdk-go-v2/service/sts v1.2.0
 	github.com/go-logr/logr v0.4.0
