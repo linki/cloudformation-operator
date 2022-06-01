@@ -8,11 +8,11 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.1.3
 	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.2.0
 	github.com/aws/aws-sdk-go-v2/service/sts v1.2.0
-	github.com/go-logr/logr v0.4.0
-	github.com/onsi/ginkgo v1.15.2
-	github.com/onsi/gomega v1.11.0
+	github.com/go-logr/logr v1.2.0
+	github.com/onsi/ginkgo v1.16.5
+	github.com/onsi/gomega v1.18.1
 	github.com/spf13/pflag v1.0.5
-	k8s.io/apimachinery v0.20.5
-	k8s.io/client-go v0.20.5
-	sigs.k8s.io/controller-runtime v0.8.3
+	k8s.io/apimachinery v0.24.0
+	k8s.io/client-go v0.24.0
+	sigs.k8s.io/controller-runtime v0.12.1
 )
