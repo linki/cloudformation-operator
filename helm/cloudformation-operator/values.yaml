@@ -54,6 +54,10 @@ resources:
 ## Pod Affinity
 affinity: {}
 
+# Additional command-line arguments to be passed to operator
+extraArgs:
+  #capability: CAPABILITY_NAMED_IAM
+
 ## A list of additional environment variables
 extraEnv:
   #- name: my_env
