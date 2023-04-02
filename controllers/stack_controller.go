@@ -237,6 +237,9 @@ func (r *StackReconciler) updateStack(loop *StackLoop) error {
 		if strings.Contains(err.Error(), "No updates are to be performed.") {
 			r.Log.WithValues("stack", loop.instance.Name).Info("stack already updated")
 			return nil
+		} else if strings.Contains(err.Error(), "does not exist") {
+			r.Log.WithValues("stack", loop.instance.Name).Info("Stack does not exist in AWS. Re-creating it.")
+			return r.createStack(loop)
 		}
 		return err
 	}

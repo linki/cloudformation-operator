@@ -1,0 +1,41 @@
+apiVersion: cloudformation.linki.space/v1alpha1
+kind: Stack
+metadata:
+  name: my-queue
+spec:
+  template: |
+    ---
+    AWSTemplateFormatVersion: "2010-09-09"
+    Resources:
+      MySourceQueue:
+        Type: AWS::SQS::Queue
+        Properties:
+          RedrivePolicy:
+            deadLetterTargetArn:
+              Fn::GetAtt:
+              - "MyDeadLetterQueue"
+              - "Arn"
+            maxReceiveCount: 5
+      MyDeadLetterQueue:
+        Type: AWS::SQS::Queue
+    Outputs:
+      SourceQueueURL:
+        Description: "URL of source queue"
+        Value:
+          Ref: "MySourceQueue"
+      SourceQueueARN:
+        Description: "ARN of source queue"
+        Value:
+          Fn::GetAtt:
+          - "MySourceQueue"
+          - "Arn"
+      DeadLetterQueueURL:
+        Description: "URL of dead-letter queue"
+        Value:
+          Ref: "MyDeadLetterQueue"
+      DeadLetterQueueARN:
+        Description: "ARN of dead-letter queue"
+        Value:
+          Fn::GetAtt:
+          - "MyDeadLetterQueue"
+          - "Arn"
